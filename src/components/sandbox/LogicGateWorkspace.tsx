@@ -1139,9 +1139,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     const screenX = e.clientX - rect.left
     const screenY = e.clientY - rect.top
     
-    // Update mouse position for wire preview
-    const worldPos = screenToWorld(screenX, screenY)
-    setMousePosition(worldPos)
+    // Update mouse position for wire preview (keep in screen coordinates)
+    setMousePosition({ x: screenX, y: screenY })
     
     // Handle panning
     if (isPanning) {
@@ -2969,28 +2968,36 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           }
         }}
       >
-        <svg className="absolute inset-0 w-full h-full">
+        <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
           <defs>
-            <pattern id="grid" width={40 * zoom} height={40 * zoom} patternUnits="userSpaceOnUse" patternTransform={`translate(${pan.x % (40 * zoom)}, ${pan.y % (40 * zoom)})`}>
-              <path d={`M ${40 * zoom} 0 L 0 0 0 ${40 * zoom}`} fill="none" stroke="white" strokeOpacity="0.08" strokeWidth="1.2" />
-              <circle cx={0} cy={0} r="0.5" fill="white" fillOpacity="0.15" />
-              <circle cx={40 * zoom} cy={0} r="0.5" fill="white" fillOpacity="0.15" />
-              <circle cx={0} cy={40 * zoom} r="0.5" fill="white" fillOpacity="0.15" />
-              <circle cx={40 * zoom} cy={40 * zoom} r="0.5" fill="white" fillOpacity="0.15" />
+            <pattern id="grid" width={40 * zoom} height={40 * zoom} patternUnits="userSpaceOnUse" x={pan.x % (40 * zoom)} y={pan.y % (40 * zoom)}>
+              <line x1={0} y1={0} x2={40 * zoom} y2={0} stroke="white" strokeOpacity="0.08" strokeWidth="1" />
+              <line x1={0} y1={0} x2={0} y2={40 * zoom} stroke="white" strokeOpacity="0.08" strokeWidth="1" />
+              <circle cx={0} cy={0} r={zoom} fill="white" fillOpacity="0.15" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
         
         <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: draggingGate ? 'none' : 'auto' }}>
-          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          <g>
             {connections.map(conn => {
             const fromGate = gates.find(g => g.id === conn.from.gateId)
             const toGate = gates.find(g => g.id === conn.to.gateId)
             if (!fromGate || !toGate) return null
             
-            const from = getConnectionPoint(fromGate, conn.from.point)
-            const to = getConnectionPoint(toGate, conn.to.point)
+            const fromWorld = getConnectionPoint(fromGate, conn.from.point)
+            const toWorld = getConnectionPoint(toGate, conn.to.point)
+            
+            // Convert world coordinates to screen coordinates
+            const from = {
+              x: fromWorld.x * zoom + pan.x,
+              y: fromWorld.y * zoom + pan.y
+            }
+            const to = {
+              x: toWorld.x * zoom + pan.x,
+              y: toWorld.y * zoom + pan.y
+            }
             const isActive = isStepwiseMode ? animatingConnections.has(conn.id) : fromGate.output
             const energyValue = fromGate.output // The actual boolean value being transmitted
             
@@ -3091,7 +3098,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
               const fromGate = gates.find(g => g.id === connectingFrom.gateId)
               if (!fromGate) return null
               
-              const from = getConnectionPoint(fromGate, connectingFrom.point)
+              const fromWorld = getConnectionPoint(fromGate, connectingFrom.point)
+              const from = {
+                x: fromWorld.x * zoom + pan.x,
+                y: fromWorld.y * zoom + pan.y
+              }
               const to = mousePosition
               
               return (
