@@ -1,0 +1,64 @@
+/* Anti-flicker styles - Load early to prevent FOUC */
+
+/* Prevent flash of unstyled content */
+html {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Force GPU acceleration for smooth animations */
+* {
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000;
+}
+
+/* Disable problematic will-change usage */
+* {
+  will-change: auto !important;
+}
+
+/* Optimize text rendering */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent layout shifts from lazy-loaded content */
+img, video, iframe {
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+
+/* Disable transitions during page load */
+.preload * {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -ms-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
+}
+
+/* Optimize animation performance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prevent flicker from Framer Motion hydration */
+[data-framer-appear-id] {
+  opacity: 1 !important;
+}
