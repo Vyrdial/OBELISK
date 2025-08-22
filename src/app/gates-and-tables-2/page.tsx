@@ -233,8 +233,8 @@ function AdvancedGateVisualization({ gate, inputs, onInputChange, size = 'normal
   )
 }
 
-// Truth table with pattern highlighting (matching gates-and-tables-1 style)
-function EnhancedTruthTable({ gate, currentInputs = [] }: { 
+// State table with pattern highlighting (matching gates-and-tables-1 style)
+function EnhancedStateTable({ gate, currentInputs = [] }: { 
   gate: 'XOR' | 'NAND' | 'NOR',
   currentInputs?: boolean[]
 }) {
@@ -295,7 +295,7 @@ function EnhancedTruthTable({ gate, currentInputs = [] }: {
       <div className="p-4">
         <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
           <span className="text-lg">📊</span>
-          {gate} Truth Table
+          {gate} State Table
         </h3>
         <table className="w-full text-sm">
           <thead>
@@ -601,7 +601,7 @@ export default function AdvancedGatesLesson() {
             </p>
 
             {currentSection < 3 && (
-              <EnhancedTruthTable gate={currentGate} currentInputs={[gateInputs.a, gateInputs.b]} />
+              <EnhancedStateTable gate={currentGate} currentInputs={[gateInputs.a, gateInputs.b]} />
             )}
 
             {currentSection === 3 && (

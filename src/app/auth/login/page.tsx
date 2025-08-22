@@ -1,24 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { m } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowLeft, Sparkles, Rocket } from 'lucide-react'
 import Link from 'next/link'
-import LandingBackground from '@/components/effects/LandingBackground'
+import CosmicBackground from '@/components/effects/CosmicBackground'
+import ClientOnly from '@/components/effects/ClientOnly'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { signIn, signInWithProvider } = useAuth()
+  const { signIn, signInWithProvider, session } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: true // Default to remembering the user
+    rememberMe: false // Default to NOT remembering for better security
   })
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (session) {
+      router.push('/home')
+    }
+  }, [session, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -64,8 +72,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <LandingBackground />
+    <div className="min-h-screen relative overflow-x-hidden bg-black">
+      {/* Cosmic Background matching home page */}
+      <ClientOnly fallback={<div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-blue-950 to-purple-950" />}>
+        <CosmicBackground 
+          intensity="low" 
+          enableMeteors={false}
+          enableNebula={false}
+          enablePlanets={false}
+        />
+      </ClientOnly>
+      
+      {/* Subtle dark gradient overlay matching home */}
+      <div className="fixed inset-0 bg-gradient-to-b from-purple-950/20 via-transparent to-indigo-950/30 pointer-events-none z-10" />
       
       {/* Header */}
       <m.div
@@ -76,7 +95,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-between max-w-md mx-auto">
           <m.button
             onClick={() => router.push('/')}
-            className="p-2 rounded-full glass-morphism border border-white/20 hover:border-cosmic-starlight/50 transition-all duration-75 cosmic-focus"
+            className="p-2 rounded-full glass-morphism border border-white/10 hover:border-purple-500/30 transition-all duration-200 backdrop-blur-sm"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -84,15 +103,10 @@ export default function LoginPage() {
           </m.button>
           
           <m.h1
-            className="text-2xl font-bold cosmic-text-gradient cosmic-heading"
-            animate={{ 
-              textShadow: [
-                '0 0 10px rgba(233, 69, 96, 0.3)',
-                '0 0 20px rgba(233, 69, 96, 0.6)',
-                '0 0 10px rgba(233, 69, 96, 0.3)'
-              ]
-            }}
-            transition={{ duration: 3, repeat: Infinity }}
+            className="text-2xl font-bold text-white cosmic-heading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
           >
             OBELISK
           </m.h1>
@@ -110,7 +124,7 @@ export default function LoginPage() {
           className="w-full max-w-md"
         >
           {/* Form Container */}
-          <div className="glass-morphism rounded-3xl p-8 border border-white/20 shadow-cosmic backdrop-blur-xl">
+          <div className="glass-morphism rounded-2xl p-8 border border-white/10 backdrop-blur-sm">
             {/* Title */}
             <m.div
               initial={{ opacity: 0 }}
@@ -118,15 +132,11 @@ export default function LoginPage() {
               transition={{ delay: 0.3 }}
               className="text-center mb-8"
             >
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Sparkles className="w-6 h-6 text-cosmic-starlight" />
-                <h2 className="text-3xl font-bold text-white cosmic-heading">
-                  Welcome Back
-                </h2>
-                <Sparkles className="w-6 h-6 text-cosmic-aurora" />
-              </div>
-              <p className="text-white/70">
-                Continue your journey through the cosmos of knowledge
+              <h2 className="text-3xl font-bold text-white cosmic-heading mb-3">
+                Welcome Back
+              </h2>
+              <p className="text-white/60">
+                Continue your journey through the cosmos
               </p>
             </m.div>
 
@@ -151,41 +161,39 @@ export default function LoginPage() {
             >
               {/* Email Field */}
               <div className="space-y-2">
-                <label className="text-white/80 text-sm font-medium block">
+                <label className="text-white/70 text-sm font-medium block">
                   Email Address
                 </label>
-                <m.input
+                <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full p-4 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-cosmic-starlight focus:bg-white/10 transition-all duration-75 duration-300 cosmic-focus outline-none"
-                  placeholder="singularity@cosmos.space"
-                  whileFocus={{ scale: 1.02 }}
+                  className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:border-purple-500/30 focus:bg-white/10 transition-all duration-200 outline-none"
+                  placeholder="your@email.com"
                 />
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
-                <label className="text-white/80 text-sm font-medium block">
+                <label className="text-white/70 text-sm font-medium block">
                   Password
                 </label>
                 <div className="relative">
-                  <m.input
+                  <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-4 pr-12 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-cosmic-starlight focus:bg-white/10 transition-all duration-75 duration-300 cosmic-focus outline-none"
+                    className="w-full p-4 pr-12 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:border-purple-500/30 focus:bg-white/10 transition-all duration-200 outline-none"
                     placeholder="••••••••••••"
-                    whileFocus={{ scale: 1.02 }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/80 hover:text-white transition-colors duration-75 z-10 bg-cosmic-dark/50 backdrop-blur-sm rounded-lg p-1"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors duration-200"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -193,20 +201,27 @@ export default function LoginPage() {
               </div>
 
               {/* Remember & Forgot */}
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
                     name="rememberMe"
                     checked={formData.rememberMe}
                     onChange={handleInputChange}
-                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-cosmic-starlight focus:ring-cosmic-starlight focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500 focus:ring-offset-0"
                   />
-                  <span className="text-white/70">Remember me</span>
+                  <div className="flex flex-col">
+                    <span className="text-white/60 text-sm group-hover:text-white/80 transition-colors">
+                      Keep me signed in
+                    </span>
+                    <span className="text-white/40 text-xs">
+                      {formData.rememberMe ? 'Stay signed in for 30 days' : 'Sign out when browser closes'}
+                    </span>
+                  </div>
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-cosmic-starlight hover:text-cosmic-aurora transition-colors duration-75"
+                  className="text-purple-400 hover:text-purple-300 transition-colors duration-200 text-sm"
                 >
                   Forgot password?
                 </Link>
@@ -216,7 +231,7 @@ export default function LoginPage() {
               <m.button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-cosmic-glow to-cosmic-starlight text-white font-semibold cosmic-button shadow-cosmic hover:shadow-stardust transition-all duration-75 duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:shadow-2xl hover:shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-[30ms] disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: isLoading ? 1 : 1.02 }}
                 whileTap={{ scale: isLoading ? 1 : 0.98 }}
               >
@@ -227,12 +242,12 @@ export default function LoginPage() {
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     />
-                    Entering the Cosmos...
+                    Signing in...
                   </div>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Rocket className="w-5 h-5" />
-                    Launch Into Learning
+                    Sign In
                   </span>
                 )}
               </m.button>
@@ -246,10 +261,10 @@ export default function LoginPage() {
               className="my-8 relative"
             >
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
+                <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-transparent text-white/60">
+                <span className="px-4 bg-transparent text-white/50">
                   or continue with
                 </span>
               </div>
@@ -265,7 +280,7 @@ export default function LoginPage() {
               <m.button
                 type="button"
                 onClick={() => handleSocialLogin('google')}
-                className="p-3 rounded-xl border border-white/20 text-white/80 hover:border-white/40 hover:bg-white/5 transition-all duration-75 duration-300 cosmic-focus"
+                className="p-3 rounded-xl glass-morphism border border-white/10 text-white/80 hover:border-purple-500/20 hover:bg-purple-500/10 transition-all duration-200 backdrop-blur-sm"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -277,7 +292,7 @@ export default function LoginPage() {
               <m.button
                 type="button"
                 onClick={() => handleSocialLogin('discord')}
-                className="p-3 rounded-xl border border-white/20 text-white/80 hover:border-white/40 hover:bg-white/5 transition-all duration-75 duration-300 cosmic-focus"
+                className="p-3 rounded-xl glass-morphism border border-white/10 text-white/80 hover:border-purple-500/20 hover:bg-purple-500/10 transition-all duration-200 backdrop-blur-sm"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -295,13 +310,13 @@ export default function LoginPage() {
               transition={{ delay: 1 }}
               className="text-center mt-8 pt-6 border-t border-white/10"
             >
-              <p className="text-white/70">
-                New to the cosmos?{' '}
+              <p className="text-white/60">
+                New to OBELISK?{' '}
                 <Link
                   href="/auth/signup"
-                  className="text-cosmic-starlight hover:text-cosmic-aurora transition-colors duration-75 font-semibold"
+                  className="text-purple-400 hover:text-purple-300 transition-colors duration-200 font-semibold"
                 >
-                  Begin your journey
+                  Create an account
                 </Link>
               </p>
             </m.div>

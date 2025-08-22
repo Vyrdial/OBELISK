@@ -45,17 +45,17 @@ export const conceptArchive: ConceptDefinition[] = [
   },
   {
     id: 'truth-tables',
-    term: 'Truth Tables',
+    term: 'State Tables',
     definition: 'Systematic representations of all possible input-output relationships in logical operations.',
     notes: [
-      'Truth tables reveal the complete behavior of logical systems',
+      'State tables reveal the complete behavior of logical systems',
       'They map every possible state to its outcome',
-      'Patterns in truth tables reveal the nature of logical operations',
-      'Understanding truth tables is understanding deterministic systems'
+      'Patterns in state tables reveal the nature of logical operations',
+      'Understanding state tables is understanding deterministic systems'
     ],
     demo: {
       type: 'visualization',
-      component: 'TruthTablesDemo'
+      component: 'StateTablesDemo'
     },
     relatedConcepts: ['binary-states', 'logic-gates', 'boolean-logic']
   },

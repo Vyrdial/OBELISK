@@ -93,9 +93,9 @@ export default function LogicGateWorkspace() {
   const [hoveredConnection, setHoveredConnection] = useState<string | null>(null)
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
   const [hasDragged, setHasDragged] = useState(false)
-  const [showTruthTable, setShowTruthTable] = useState(false)
-  const [truthTableScale, setTruthTableScale] = useState(1)
-  const [truthTablePos, setTruthTablePos] = useState({ x: 400, y: 200 })
+  const [showStateTable, setShowStateTable] = useState(false)
+  const [stateTableScale, setStateTableScale] = useState(1)
+  const [stateTablePos, setStateTablePos] = useState({ x: 400, y: 200 })
   const [isDraggingTable, setIsDraggingTable] = useState(false)
   const [tableDragStart, setTableDragStart] = useState({ x: 0, y: 0 })
   const workspaceRef = useRef<HTMLDivElement>(null)
@@ -275,11 +275,11 @@ export default function LogicGateWorkspace() {
     }
   }
 
-  // Global mouse move for truth table dragging
+  // Global mouse move for state table dragging
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (isDraggingTable) {
-        setTruthTablePos({
+        setStateTablePos({
           x: e.clientX - tableDragStart.x,
           y: e.clientY - tableDragStart.y
         })
@@ -450,8 +450,8 @@ export default function LogicGateWorkspace() {
     })
   }, [])
 
-  // Generate truth table for the current circuit
-  const generateTruthTable = useCallback(() => {
+  // Generate state table for the current circuit
+  const generateStateTable = useCallback(() => {
     // Find all switches (inputs) and outputs - sort by ID for stable ordering
     const switches = gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id))
     const outputs = gates.filter(g => g.type === 'OUTPUT').sort((a, b) => a.id.localeCompare(b.id))
@@ -542,15 +542,15 @@ export default function LogicGateWorkspace() {
           <div className="flex-1" />
           
           <button
-            onClick={() => setShowTruthTable(!showTruthTable)}
+            onClick={() => setShowStateTable(!showStateTable)}
             className={`px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 ${
-              showTruthTable
+              showStateTable
                 ? 'bg-gradient-to-r from-cosmic-aurora/30 to-cosmic-starlight/30 border border-cosmic-aurora/50 text-cosmic-aurora shadow-lg shadow-cosmic-aurora/20'
                 : 'bg-white/5 border border-transparent text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
             <Table className="w-3.5 h-3.5" />
-            <span className="font-semibold text-xs select-none hidden md:inline">Truth Table</span>
+            <span className="font-semibold text-xs select-none hidden md:inline">State Table</span>
           </button>
           
           <div className="w-px h-8 bg-white/10 mx-1" />
@@ -818,13 +818,13 @@ export default function LogicGateWorkspace() {
         )}
       </div>
 
-      {showTruthTable && (
+      {showStateTable && (
         <div
           className="absolute z-30"
           style={{
-            left: truthTablePos.x,
-            top: truthTablePos.y,
-            transform: `scale(${truthTableScale})`,
+            left: stateTablePos.x,
+            top: stateTablePos.y,
+            transform: `scale(${stateTableScale})`,
             transformOrigin: 'top left'
           }}
         >
@@ -834,21 +834,21 @@ export default function LogicGateWorkspace() {
               const rect = e.currentTarget.getBoundingClientRect()
               setIsDraggingTable(true)
               setTableDragStart({
-                x: e.clientX - truthTablePos.x,
-                y: e.clientY - truthTablePos.y
+                x: e.clientX - stateTablePos.x,
+                y: e.clientY - stateTablePos.y
               })
             }}
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10 cursor-move select-none">
               <h3 className="text-white font-semibold flex items-center gap-2">
                 <Table className="w-4 h-4" />
-                Truth Table
+                State Table
               </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setTruthTableScale(Math.max(0.5, truthTableScale - 0.1))
+                      setStateTableScale(Math.max(0.5, stateTableScale - 0.1))
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors px-2 py-1 hover:bg-white/10 rounded"
@@ -856,12 +856,12 @@ export default function LogicGateWorkspace() {
                     <span className="text-xs font-bold">−</span>
                   </button>
                   <span className="text-white/60 text-xs min-w-[3rem] text-center select-none">
-                    {Math.round(truthTableScale * 100)}%
+                    {Math.round(stateTableScale * 100)}%
                   </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setTruthTableScale(Math.min(1.5, truthTableScale + 0.1))
+                      setStateTableScale(Math.min(1.5, stateTableScale + 0.1))
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors px-2 py-1 hover:bg-white/10 rounded"
@@ -872,7 +872,7 @@ export default function LogicGateWorkspace() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setShowTruthTable(false)
+                      setShowStateTable(false)
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors p-1 hover:bg-white/10 rounded"
@@ -884,20 +884,20 @@ export default function LogicGateWorkspace() {
               <div className="p-4">
               
               {(() => {
-                const truthTable = generateTruthTable()
+                const stateTable = generateStateTable()
                 
-                if (truthTable.inputs.length === 0 || truthTable.outputs.length === 0) {
+                if (stateTable.inputs.length === 0 || stateTable.outputs.length === 0) {
                   return (
                     <div className="text-white/60 text-sm text-center py-8">
-                      Add switches and outputs to see the truth table
+                      Add switches and outputs to see the state table
                     </div>
                   )
                 }
                 
-                // Find current state row - use exact same sorting as generateTruthTable
+                // Find current state row - use exact same sorting as generateStateTable
                 const orderedSwitches = gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id))
                 const currentInputs = orderedSwitches.map(s => s.output)
-                const activeRowIndex = truthTable.rows.findIndex(row => 
+                const activeRowIndex = stateTable.rows.findIndex(row => 
                   row.inputs.every((input, i) => input === currentInputs[i])
                 )
                 
@@ -906,13 +906,13 @@ export default function LogicGateWorkspace() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-white/10">
-                          {truthTable.inputs.map((input, i) => (
+                          {stateTable.inputs.map((input, i) => (
                             <th key={`input-${i}`} className="text-white/80 font-medium px-3 py-2 text-center">
                               {input}
                             </th>
                           ))}
                           <th className="w-px" />
-                          {truthTable.outputs.map((output, i) => (
+                          {stateTable.outputs.map((output, i) => (
                             <th key={`output-${i}`} className="text-white/80 font-medium px-3 py-2 text-center">
                               {output}
                             </th>
@@ -920,7 +920,7 @@ export default function LogicGateWorkspace() {
                         </tr>
                       </thead>
                       <tbody>
-                        {truthTable.rows.map((row, rowIndex) => (
+                        {stateTable.rows.map((row, rowIndex) => (
                           <tr 
                             key={rowIndex} 
                             className={`border-b border-white/5 transition-all duration-300 ${

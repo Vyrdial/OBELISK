@@ -76,6 +76,14 @@ export default function ProfileDropdown() {
       }
     },
     {
+      icon: Settings,
+      label: 'Settings',
+      action: () => {
+        setIsOpen(false)
+        router.push('/settings')
+      }
+    },
+    {
       icon: HelpCircle,
       label: 'Help & Support',
       action: () => {
@@ -119,7 +127,7 @@ export default function ProfileDropdown() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 w-64 glass-morphism rounded-xl border border-white/10 shadow-2xl z-50 opacity-95"
+            className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-white/10 shadow-2xl z-50 bg-gray-900/95 backdrop-blur-xl"
           >
             {/* Profile Header */}
             {profile && (
@@ -130,9 +138,6 @@ export default function ProfileDropdown() {
                     <p className="text-white font-semibold">{profile.display_name}</p>
                     <p className="text-white/60 text-sm">@{profile.username}</p>
                   </div>
-                </div>
-                <div className="mt-2 text-xs text-white/50">
-                  {profile.cosmic_title}
                 </div>
               </div>
             )}

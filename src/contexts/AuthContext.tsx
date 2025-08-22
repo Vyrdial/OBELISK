@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { createUserProfile } from '@/lib/profileSystem'
+import { authStorage } from '@/lib/clientAuth'
+import { appConfig } from '@/config/app'
 
 interface AuthContextType {
   user: User | null
@@ -12,6 +14,7 @@ interface AuthContextType {
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
+  signOutAllSessions: () => Promise<{ error: AuthError | null }>
   signInWithProvider: (provider: 'google' | 'discord') => Promise<{ error: AuthError | null }>
 }
 
@@ -25,43 +28,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
     
-    // Check if this is a new browser session and we had a temporary session
-    const checkTemporarySession = async () => {
-      if (typeof window !== 'undefined') {
-        const isTemporary = window.sessionStorage.getItem('obelisk_session_temporary')
-        const wasRemembered = window.localStorage.getItem('obelisk_remember_me')
-        
-        // If there's no session storage flag but there was a temporary session before,
-        // it means the browser was closed and reopened - clear the session
-        if (!isTemporary && !wasRemembered) {
-          // Check if we have a stored session that should have been temporary
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            // This session should have been temporary, clear it
-            await supabase.auth.signOut()
-            return null
-          }
-        }
-        
-        return true
-      }
-      return true
-    }
-    
     // Get initial session with timeout
     const initializeAuth = async () => {
       try {
-        // First check if we should clear a temporary session
-        const shouldContinue = await checkTemporarySession()
-        if (!shouldContinue) {
-          if (mounted) {
-            setSession(null)
-            setUser(null)
-            setLoading(false)
-          }
-          return
-        }
-        
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Session timeout')), 5000)
@@ -147,32 +116,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string, rememberMe: boolean = true) => {
-    // Set session storage based on rememberMe preference
-    if (!rememberMe) {
-      // Use session storage for this sign-in (expires when browser closes)
-      await supabase.auth.updateUser({
-        data: { session_expires_at: 'session' }
-      }).catch(() => {}) // Ignore errors from this call
-    }
+    // Set the remember me preference using our utility
+    authStorage.setRememberMe(rememberMe)
     
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
     
-    // If rememberMe is false, we'll store a flag to clear session on browser close
-    if (!rememberMe && data?.session) {
-      // Store in sessionStorage (not localStorage) so it clears on browser close
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('obelisk_session_temporary', 'true')
-        // Remove any persistent session flag
-        window.localStorage.removeItem('obelisk_remember_me')
-      }
-    } else if (rememberMe && data?.session) {
-      // Store in localStorage to persist
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('obelisk_remember_me', 'true')
-        window.sessionStorage.removeItem('obelisk_session_temporary')
+    // If sign in was successful and rememberMe is false, 
+    // we need to move the session to sessionStorage
+    if (!error && data?.session && !rememberMe) {
+      // Get the auth token key that Supabase uses
+      const authKey = 'obelisk-auth-token'
+      const authData = window.localStorage.getItem(authKey)
+      
+      if (authData) {
+        // Move from localStorage to sessionStorage
+        window.sessionStorage.setItem(authKey, authData)
+        window.localStorage.removeItem(authKey)
+        
+        // Set session active marker
+        window.sessionStorage.setItem('obelisk_session_active', 'true')
       }
     }
     
@@ -180,14 +145,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = async (email: string, password: string) => {
-    // Use NEXT_PUBLIC_SITE_URL in production, fallback to window.location.origin
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`
+        emailRedirectTo: appConfig.getAuthCallbackUrl()
       }
     })
     return { error }
@@ -195,6 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      // Clear all auth-related storage
+      authStorage.clearAuth()
+      
       const { error } = await supabase.auth.signOut()
       if (!error) {
         // Clear local state immediately
@@ -210,14 +175,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signOutAllSessions = async () => {
+    try {
+      // Clear all auth-related storage
+      authStorage.clearAuth()
+      
+      // Sign out from all sessions using Supabase's global sign out
+      // This invalidates all refresh tokens for the user
+      const { error } = await supabase.auth.signOut({ scope: 'global' })
+      
+      if (!error) {
+        // Clear local state immediately
+        setUser(null)
+        setSession(null)
+      }
+      
+      return { error }
+    } catch (error) {
+      // Force clear local state even if sign out fails
+      setUser(null)
+      setSession(null)
+      return { error: error as AuthError }
+    }
+  }
+
   const signInWithProvider = async (provider: 'google' | 'discord') => {
-    // Use NEXT_PUBLIC_SITE_URL in production, fallback to window.location.origin
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    // OAuth providers always remember the user by default
+    authStorage.setRememberMe(true)
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${siteUrl}/auth/callback`
+        redirectTo: appConfig.getAuthCallbackUrl()
       }
     })
     return { error }
@@ -230,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    signOutAllSessions,
     signInWithProvider,
   }
 

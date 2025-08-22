@@ -181,8 +181,8 @@ function InteractiveGate({
   )
 }
 
-// Truth Table Component
-function TruthTable({ gateType }: { gateType: 'AND' | 'OR' | 'NOT' }) {
+// State Table Component
+function StateTable({ gateType }: { gateType: 'AND' | 'OR' | 'NOT' }) {
   const getRows = () => {
     if (gateType === 'NOT') {
       return [
@@ -555,7 +555,7 @@ function LogicGatesContent() {
     'slide-11': [
       { id: '11a', npc: 'ECHELON' as const, text: "You've mastered the three fundamental logic gates!", requiresInteraction: false },
       { id: '11b', npc: 'ECHELON' as const, text: "AND requires all, OR requires any, NOT flips the input.", requiresInteraction: false },
-      { id: '11c', npc: 'ECHELON' as const, text: "Next, we'll learn how to map out all possibilities with truth tables!", requiresInteraction: true }
+      { id: '11c', npc: 'ECHELON' as const, text: "Next, we'll learn how to map out all possibilities with state tables!", requiresInteraction: true }
     ]
   }
   
@@ -585,7 +585,7 @@ function LogicGatesContent() {
         whyItMatters: 'AND gates enforce strict requirements - perfect for security systems where multiple conditions must be met.',
         demonstration: (
           <div className="space-y-4">
-            <TruthTable gateType="AND" />
+            <StateTable gateType="AND" />
             <p className="text-white/60 text-sm text-center">All inputs must be 1 to output 1</p>
           </div>
         )
@@ -597,7 +597,7 @@ function LogicGatesContent() {
         whyItMatters: 'OR gates provide flexibility - useful for systems where any of several conditions can trigger an action.',
         demonstration: (
           <div className="space-y-4">
-            <TruthTable gateType="OR" />
+            <StateTable gateType="OR" />
             <p className="text-white/60 text-sm text-center">Any input of 1 produces output 1</p>
           </div>
         )
@@ -609,7 +609,7 @@ function LogicGatesContent() {
         whyItMatters: 'NOT gates invert signals - essential for creating complementary states and toggle functionality.',
         demonstration: (
           <div className="space-y-4">
-            <TruthTable gateType="NOT" />
+            <StateTable gateType="NOT" />
             <p className="text-white/60 text-sm text-center">Always outputs the opposite</p>
           </div>
         )
@@ -852,7 +852,7 @@ function LogicGatesContent() {
                   }}
                   showOutput={true}
                 />
-                <TruthTable gateType="AND" />
+                <StateTable gateType="AND" />
               </div>
             </m.div>
           )}
@@ -887,7 +887,7 @@ function LogicGatesContent() {
                   }}
                   showOutput={true}
                 />
-                <TruthTable gateType="OR" />
+                <StateTable gateType="OR" />
               </div>
             </m.div>
           )}
@@ -920,7 +920,7 @@ function LogicGatesContent() {
                   }}
                   showOutput={true}
                 />
-                <TruthTable gateType="NOT" />
+                <StateTable gateType="NOT" />
               </div>
             </m.div>
           )}
@@ -1295,7 +1295,7 @@ function LogicGatesContent() {
                 onClick={() => router.push('/truth-tables')}
                 className="w-full px-6 py-3 bg-gradient-to-r from-cosmic-aurora to-cosmic-starlight text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
               >
-                Continue to Truth Tables
+                Continue to State Tables
               </button>
               
               <button

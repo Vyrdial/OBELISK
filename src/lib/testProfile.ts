@@ -38,7 +38,6 @@ export async function createTestProfile() {
         {
           user_id: user.id,
           ...profileData,
-          xp: 0,
           stardust: 100,
           evolution_stage: 'Cosmic Grain',
           unlocked_cosmetics: [],

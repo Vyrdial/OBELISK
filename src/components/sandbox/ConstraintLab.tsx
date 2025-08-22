@@ -672,161 +672,208 @@ export default function ConstraintLab({ onBack }: Props) {
     }
   }, [constraintSystem, selectedNode])
 
-  // Initialize with demo nodes
-  useEffect(() => {
-    const n1 = createNode('X', 'variable', 'sphere')
-    const n2 = createNode('Y', 'variable', 'cube')
-    const n3 = createNode('Z', 'variable', 'pyramid')
-    
-    setTimeout(() => {
-      if (n1 && n2) createConnection(n1, n2, 'proportional', '2X = Y')
-      if (n2 && n3) createConnection(n2, n3, 'sum', 'Y + Z = 100')
-      if (n3 && n1) createConnection(n3, n1, 'inequality', 'Z > X')
-    }, 100)
-  }, []) // Intentionally empty deps
+  // No longer auto-creating demo nodes to avoid redundant initial nodes
 
   // Selected node for editing
   const selectedNodeData = selectedNode ? constraintSystem.nodes.get(selectedNode) : null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="absolute inset-0 bg-black overflow-hidden">
       {/* Exit Button */}
       {onBack && (
         <m.button
           onClick={onBack}
-          className="fixed top-24 left-6 z-[60] p-3 rounded-full glass-morphism border border-white/20 hover:border-cosmic-starlight/50 transition-all"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          className="absolute top-4 left-4 z-[60] p-2.5 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          <ArrowLeft className="w-5 h-5 text-white" />
+          <ArrowLeft className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
         </m.button>
       )}
 
       {/* 3D Viewport */}
       <div className="absolute inset-0" ref={mountRef} />
 
-      {/* Top Toolbar */}
-      <div className="absolute top-20 left-20 right-6 z-30 pointer-events-none">
-        <div className="flex items-start gap-4">
-          <div className="bg-black/90 backdrop-blur-xl rounded-xl p-3 border border-blue-500/30 pointer-events-auto">
-            <div className="flex items-center gap-2">
-              {/* Add Node */}
-              <button
-                onClick={() => setShowAddPanel(!showAddPanel)}
-                className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all"
-                title="Add Node"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+      {/* Top Toolbar - Enhanced UI */}
+      <div className="absolute top-4 left-0 right-0 z-30 pointer-events-none px-4">
+        <div className="flex items-start gap-4 justify-center">
+          {/* Main Controls - Enhanced styling */}
+          <div className="bg-gradient-to-br from-slate-900/90 via-gray-900/95 to-black/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5 p-[1px]">
+              <div className="bg-gradient-to-b from-gray-900/95 to-black/95 rounded-2xl">
+                <div className="flex items-center gap-2 p-2">
+                  {/* Add Node - Enhanced */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-xl blur opacity-0 group-hover:opacity-25 transition-opacity duration-300" />
+                    <button
+                      onClick={() => setShowAddPanel(!showAddPanel)}
+                      className={`relative px-3 py-2 rounded-xl transition-all flex items-center gap-2 ${
+                        showAddPanel 
+                          ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/15 text-cyan-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]' 
+                          : 'bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-slate-400 hover:from-blue-500/15 hover:to-cyan-500/10 hover:text-cyan-400'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4 transition-transform group-hover:rotate-90 duration-300" />
+                      <span className="text-xs font-medium">Add</span>
+                    </button>
+                  </div>
 
-              {/* Connection Mode */}
-              <button
-                onClick={() => {
-                  if (connectionSource) {
-                    setConnectionSource(null)
-                    setConnectionTarget(null)
-                  } else {
-                    alert('Double-click nodes to connect them')
-                  }
-                }}
-                className={`p-2 rounded-lg transition-all ${
-                  connectionSource
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
-                }`}
-                title="Connect Nodes"
-              >
-                <Link2 className="w-4 h-4" />
-              </button>
+                  {/* Connection Mode - Enhanced */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400 rounded-xl blur opacity-0 group-hover:opacity-25 transition-opacity duration-300" />
+                    <button
+                      onClick={() => {
+                        if (connectionSource) {
+                          setConnectionSource(null)
+                          setConnectionTarget(null)
+                        } else {
+                          alert('Double-click nodes to connect them')
+                        }
+                      }}
+                      className={`relative px-3 py-2 rounded-xl transition-all flex items-center gap-2 ${
+                        connectionSource
+                          ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/15 text-emerald-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]'
+                          : 'bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-slate-400 hover:from-green-500/15 hover:to-emerald-500/10 hover:text-emerald-400'
+                      }`}
+                    >
+                      <Link2 className="w-4 h-4" />
+                      <span className="text-xs font-medium">Link</span>
+                    </button>
+                  </div>
 
-              <div className="w-px h-6 bg-white/10" />
+                  {/* Separator */}
+                  <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
 
-              {/* View Controls */}
-              <button
-                onClick={() => setShowGrid(!showGrid)}
-                className={`p-2 rounded-lg transition-all ${
-                  showGrid
-                    ? 'bg-white/10 text-white border border-white/20'
-                    : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'
-                }`}
-                title="Toggle Grid"
-              >
-                <Square className="w-4 h-4" />
-              </button>
+                  {/* View Controls Group - More compact */}
+                  <div className="flex items-center bg-slate-900/50 rounded-xl p-1">
+                    <button
+                      onClick={() => setShowGrid(!showGrid)}
+                      className={`p-2 rounded-lg transition-all ${
+                        showGrid
+                          ? 'bg-white/10 text-white shadow-sm'
+                          : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                      }`}
+                      title="Grid"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setShowConnections(!showConnections)}
+                      className={`p-2 rounded-lg transition-all ${
+                        showConnections
+                          ? 'bg-white/10 text-white shadow-sm'
+                          : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                      }`}
+                      title="Connections"
+                    >
+                      {showConnections ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => setShowLabels(!showLabels)}
+                      className={`p-2 rounded-lg transition-all ${
+                        showLabels
+                          ? 'bg-white/10 text-white shadow-sm'
+                          : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                      }`}
+                      title="Labels"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
 
-              <button
-                onClick={() => setShowConnections(!showConnections)}
-                className={`p-2 rounded-lg transition-all ${
-                  showConnections
-                    ? 'bg-white/10 text-white border border-white/20'
-                    : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'
-                }`}
-                title="Toggle Connections"
-              >
-                {showConnections ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </button>
+                  {/* Separator */}
+                  <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
 
-              <button
-                onClick={() => setShowLabels(!showLabels)}
-                className={`p-2 rounded-lg transition-all ${
-                  showLabels
-                    ? 'bg-white/10 text-white border border-white/20'
-                    : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'
-                }`}
-                title="Toggle Labels"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
+                  {/* Simulation Control - Enhanced */}
+                  <div className="relative group">
+                    <div className={`absolute inset-0 rounded-xl blur opacity-25 transition-opacity duration-300 ${
+                      simulationRunning 
+                        ? 'bg-gradient-to-r from-green-400 to-emerald-400' 
+                        : 'bg-gradient-to-r from-orange-400 to-amber-400'
+                    }`} />
+                    <button
+                      onClick={() => setSimulationRunning(!simulationRunning)}
+                      className={`relative px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-sm ${
+                        simulationRunning
+                          ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/15 text-emerald-400'
+                          : 'bg-gradient-to-br from-orange-500/20 to-amber-500/15 text-amber-400'
+                      }`}
+                    >
+                      {simulationRunning ? (
+                        <>
+                          <div className="relative">
+                            <Play className="w-4 h-4" />
+                            <div className="absolute inset-0 animate-ping">
+                              <Play className="w-4 h-4 opacity-50" />
+                            </div>
+                          </div>
+                          <span className="text-xs font-semibold">Active</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-4 h-4" />
+                          <span className="text-xs font-semibold">Paused</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
 
-              <div className="w-px h-6 bg-white/10" />
-
-              {/* Simulation Control */}
-              <button
-                onClick={() => setSimulationRunning(!simulationRunning)}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                  simulationRunning
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                }`}
-              >
-                {simulationRunning ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                <span className="text-sm">{simulationRunning ? 'Running' : 'Paused'}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  // Reset positions
-                  constraintSystem.nodes.forEach(node => {
-                    node.position.set(
-                      (Math.random() - 0.5) * 10,
-                      Math.random() * 5,
-                      (Math.random() - 0.5) * 10
-                    )
-                    node.velocity.set(0, 0, 0)
-                  })
-                }}
-                className="p-2 rounded-lg bg-white/5 text-white/60 border border-transparent hover:bg-white/10 transition-all"
-                title="Reset Positions"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+                  {/* Reset Button */}
+                  <button
+                    onClick={() => {
+                      constraintSystem.nodes.forEach(node => {
+                        node.position.set(
+                          (Math.random() - 0.5) * 10,
+                          Math.random() * 5,
+                          (Math.random() - 0.5) * 10
+                        )
+                        node.velocity.set(0, 0, 0)
+                      })
+                    }}
+                    className="p-2 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-slate-400 hover:from-purple-500/15 hover:to-pink-500/10 hover:text-purple-400 transition-all group"
+                    title="Reset"
+                  >
+                    <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Info Display */}
-          <div className="bg-black/90 backdrop-blur-xl rounded-xl p-3 border border-white/10 pointer-events-auto">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="text-white/60">
-                Nodes: <span className="text-blue-400 font-mono">{constraintSystem.nodes.size}</span>
-              </div>
-              <div className="text-white/60">
-                Connections: <span className="text-green-400 font-mono">{constraintSystem.connections.size}</span>
-              </div>
-              {hoveredNode && (
-                <div className="text-white/60">
-                  Hovering: <span className="text-yellow-400">{constraintSystem.nodes.get(hoveredNode)?.label}</span>
+          {/* Info Display - Enhanced styling */}
+          <div className="bg-gradient-to-br from-slate-900/90 via-gray-900/95 to-black/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] pointer-events-auto">
+            <div className="bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5 p-[1px] rounded-2xl">
+              <div className="bg-gradient-to-b from-gray-900/95 to-black/95 rounded-2xl px-4 py-3">
+                <div className="flex items-center gap-5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                      <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping opacity-50" />
+                    </div>
+                    <span className="text-slate-500 font-medium">Nodes</span>
+                    <span className="text-cyan-400 font-mono font-bold text-sm">{constraintSystem.nodes.size}</span>
+                  </div>
+                  <div className="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                      <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-50" />
+                    </div>
+                    <span className="text-slate-500 font-medium">Links</span>
+                    <span className="text-emerald-400 font-mono font-bold text-sm">{constraintSystem.connections.size}</span>
+                  </div>
+                  {hoveredNode && (
+                    <>
+                      <div className="w-px h-4 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        <span className="text-slate-500 font-medium">Focus</span>
+                        <span className="text-amber-400 font-bold">{constraintSystem.nodes.get(hoveredNode)?.label}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -839,7 +886,7 @@ export default function ConstraintLab({ onBack }: Props) {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="absolute top-32 left-20 z-40 w-80 pointer-events-auto"
+            className="absolute top-20 left-4 z-40 w-80 pointer-events-auto"
           >
             <div className="bg-black/95 backdrop-blur-xl rounded-xl border border-blue-500/30 shadow-2xl p-6">
               <h3 className="text-blue-400 text-lg font-medium mb-4">Add Node</h3>
@@ -925,7 +972,7 @@ export default function ConstraintLab({ onBack }: Props) {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="absolute top-32 right-6 z-40 w-96 max-h-[70vh] overflow-y-auto pointer-events-auto"
+            className="absolute top-20 right-4 z-40 w-96 max-h-[calc(100vh-6rem)] overflow-y-auto pointer-events-auto"
           >
             <div className="bg-black/95 backdrop-blur-xl rounded-xl border border-purple-500/30 shadow-2xl">
               <div className="p-6 border-b border-white/10">
@@ -1234,11 +1281,34 @@ export default function ConstraintLab({ onBack }: Props) {
       </AnimatePresence>
 
       {/* Instructions */}
-      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
-        <div className="text-xs text-white/40 bg-black/80 backdrop-blur-xl rounded-lg px-3 py-2 border border-white/20">
-          <div>Click: Select • Drag: Move node • Double-click: Connect</div>
-          <div>Shift+drag or Right-click: Rotate view • Scroll: Zoom</div>
-          <div className="text-blue-400 mt-1">Build constraints, watch relationships emerge</div>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <div className="text-[11px] text-white/30 bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-white/10 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50">Click</kbd>
+              <span>Select</span>
+            </div>
+            <div className="w-px h-3 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50">Drag</kbd>
+              <span>Move</span>
+            </div>
+            <div className="w-px h-3 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50">Double-click</kbd>
+              <span>Connect</span>
+            </div>
+            <div className="w-px h-3 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50">Shift+Drag</kbd>
+              <span>Rotate</span>
+            </div>
+            <div className="w-px h-3 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50">Scroll</kbd>
+              <span>Zoom</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

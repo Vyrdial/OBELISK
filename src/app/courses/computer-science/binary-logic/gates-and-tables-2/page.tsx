@@ -240,8 +240,8 @@ function InteractiveGate({ type, inputs, onInputChange, size = 'normal' }: {
   )
 }
 
-// Truth Table Component from gates-and-tables-1
-function TruthTable({ gateType, currentInputs = [], revealed = false }: { 
+// State Table Component from gates-and-tables-1
+function StateTable({ gateType, currentInputs = [], revealed = false }: { 
   gateType: GateType; 
   currentInputs?: boolean[];
   revealed?: boolean 
@@ -351,7 +351,7 @@ function TruthTable({ gateType, currentInputs = [], revealed = false }: {
       <div className="p-4">
         <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
           <Table className="w-5 h-5" />
-          {gateType} Truth Table
+          {gateType} State Table
         </h3>
         <table className="w-full">
           <thead>
@@ -480,7 +480,7 @@ function XORGateDemo() {
             ))}
           </div>
         </div>
-        <TruthTable gateType="XOR" currentInputs={xorInputs} revealed={true} />
+        <StateTable gateType="XOR" currentInputs={xorInputs} revealed={true} />
       </div>
     </m.div>
   )
@@ -558,7 +558,7 @@ function NANDGateDemo() {
             ))}
           </div>
         </div>
-        <TruthTable gateType="NAND" currentInputs={nandInputs} revealed={true} />
+        <StateTable gateType="NAND" currentInputs={nandInputs} revealed={true} />
       </div>
     </m.div>
   )
@@ -636,7 +636,7 @@ function NORGateDemo() {
             ))}
           </div>
         </div>
-        <TruthTable gateType="NOR" currentInputs={norInputs} revealed={true} />
+        <StateTable gateType="NOR" currentInputs={norInputs} revealed={true} />
       </div>
     </m.div>
   )

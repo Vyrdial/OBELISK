@@ -16,8 +16,8 @@ import ConceptViewer, { Concept } from '@/components/lesson/ConceptViewer'
 
 type LessonPhase = 'slide-1' | 'slide-2' | 'slide-3' | 'slide-4' | 'slide-5' | 'slide-6' | 'slide-7' | 'slide-8' | 'slide-9' | 'slide-10' | 'complete'
 
-// Interactive Truth Table Component
-function InteractiveTruthTable({ 
+// Interactive State Table Component
+function InteractiveStateTable({ 
   inputs,
   onInputChange,
   operation,
@@ -124,8 +124,8 @@ function InteractiveTruthTable({
   )
 }
 
-// Single Input Truth Table (for NOT gate)
-function SingleInputTruthTable({ 
+// Single Input State Table (for NOT gate)
+function SingleInputStateTable({ 
   inputs,
   operation,
   showOutput = true
@@ -218,7 +218,7 @@ function PatternVisualization({ pattern }: { pattern: 'AND' | 'OR' | 'NOT' | 'XO
   )
 }
 
-function TruthTablesContent() {
+function StateTablesContent() {
   const router = useRouter()
   const { profile, addStardust } = useProfile()
   const [currentPhase, setCurrentPhase] = useState<LessonPhase>('slide-1')
@@ -233,7 +233,7 @@ function TruthTablesContent() {
     { A: true, B: false },
     { A: true, B: true }
   ])
-  const [showTruthTableCard, setShowTruthTableCard] = useState(false)
+  const [showStateTableCard, setShowStateTableCard] = useState(false)
   const [notebookEntries, setNotebookEntries] = useState<NotebookEntry[]>([])
   const [viewingConcept, setViewingConcept] = useState<Concept | null>(null)
   const [showConceptViewer, setShowConceptViewer] = useState(false)
@@ -245,7 +245,7 @@ function TruthTablesContent() {
     ],
     'slide-2': [
       { id: '2a', npc: 'ECHELON' as const, text: "When we have binary values and operations, we need a way to see all possible outcomes.", requiresInteraction: false },
-      { id: '2b', npc: 'ECHELON' as const, text: "Truth tables are like maps that show us every possible combination of inputs and their results.", requiresInteraction: false },
+      { id: '2b', npc: 'ECHELON' as const, text: "State tables are like maps that show us every possible combination of inputs and their results.", requiresInteraction: false },
       { id: '2c', npc: 'ECHELON' as const, text: "They're essential for understanding how digital systems behave.", requiresInteraction: true }
     ],
     'slide-3': [
@@ -253,7 +253,7 @@ function TruthTablesContent() {
       { id: '3b', npc: 'ECHELON' as const, text: "Try clicking on the inputs to see how they change. Each row represents a different scenario.", requiresInteraction: true }
     ],
     'slide-4': [
-      { id: '4a', npc: 'ECHELON' as const, text: "Now let's see how AND logic works in a truth table.", requiresInteraction: false },
+      { id: '4a', npc: 'ECHELON' as const, text: "Now let's see how AND logic works in a state table.", requiresInteraction: false },
       { id: '4b', npc: 'ECHELON' as const, text: "AND only outputs TRUE (1) when both inputs are TRUE. It's like needing two keys to open a door.", requiresInteraction: true }
     ],
     'slide-5': [
@@ -269,15 +269,15 @@ function TruthTablesContent() {
       { id: '7b', npc: 'ECHELON' as const, text: "XOR is TRUE when inputs are different, FALSE when they're the same. It's like a 'difference detector'.", requiresInteraction: true }
     ],
     'slide-8': [
-      { id: '8a', npc: 'ECHELON' as const, text: "Truth tables help us predict behavior without building circuits.", requiresInteraction: false },
+      { id: '8a', npc: 'ECHELON' as const, text: "State tables help us predict behavior without building circuits.", requiresInteraction: false },
       { id: '8b', npc: 'ECHELON' as const, text: "Engineers use them to design everything from simple switches to complex processors.", requiresInteraction: true }
     ],
     'slide-9': [
-      { id: '9a', npc: 'ECHELON' as const, text: "Notice the patterns? Each operation has its own 'fingerprint' in the truth table.", requiresInteraction: false },
+      { id: '9a', npc: 'ECHELON' as const, text: "Notice the patterns? Each operation has its own 'fingerprint' in the state table.", requiresInteraction: false },
       { id: '9b', npc: 'ECHELON' as const, text: "These patterns are the foundation of digital logic design.", requiresInteraction: true }
     ],
     'slide-10': [
-      { id: '10a', npc: 'ECHELON' as const, text: "Excellent work! You now understand truth tables - the language of digital logic.", requiresInteraction: false },
+      { id: '10a', npc: 'ECHELON' as const, text: "Excellent work! You now understand state tables - the language of digital logic.", requiresInteraction: false },
       { id: '10b', npc: 'ECHELON' as const, text: "Next, we'll use these tables to build actual logic gates and create circuits!", requiresInteraction: true }
     ]
   }
@@ -285,14 +285,14 @@ function TruthTablesContent() {
   const getCurrentDialogs = () => phaseDialogs[currentPhase] || []
   
   // Concept definitions
-  const truthTableConcept: Concept = {
+  const stateTableConcept: Concept = {
     id: 'truth-table',
-    name: 'Truth Table',
+    name: 'State Table',
     definition: 'A mathematical table that shows all possible combinations of inputs and their corresponding outputs for a logical operation.',
-    whyItMatters: 'Truth tables are fundamental tools in digital logic, computer science, and mathematics. They allow us to analyze and design logical systems systematically.',
+    whyItMatters: 'State tables are fundamental tools in digital logic, computer science, and mathematics. They allow us to analyze and design logical systems systematically.',
     demonstration: (
       <div className="flex justify-center">
-        <InteractiveTruthTable 
+        <InteractiveStateTable 
           inputs={[
             { A: false, B: false },
             { A: false, B: true },
@@ -352,8 +352,8 @@ function TruthTablesContent() {
   }
   
   const handleNotebookEntryClick = (entry: NotebookEntry) => {
-    if (entry.title === 'Truth Table') {
-      setViewingConcept(truthTableConcept)
+    if (entry.title === 'State Table') {
+      setViewingConcept(stateTableConcept)
       setShowConceptViewer(true)
     }
   }
@@ -443,8 +443,8 @@ function TruthTablesContent() {
   // Effects for showing concept cards
   useEffect(() => {
     if (currentPhase === 'slide-2' && currentDialogIndex === 2) {
-      setShowTruthTableCard(true)
-      setTimeout(() => setShowTruthTableCard(false), 5000)
+      setShowStateTableCard(true)
+      setTimeout(() => setShowStateTableCard(false), 5000)
     }
   }, [currentPhase, currentDialogIndex])
   
@@ -453,7 +453,7 @@ function TruthTablesContent() {
     if (currentPhase === 'slide-2' && currentDialogIndex === 1) {
       addNotebookEntry({
         type: 'definition',
-        title: 'Truth Table',
+        title: 'State Table',
         content: 'A table showing all possible input combinations and their outputs'
       })
     }
@@ -516,18 +516,18 @@ function TruthTablesContent() {
                 >
                   <Table2 className="w-full h-full text-purple-500" />
                 </m.div>
-                <h1 className="text-4xl font-bold text-white">Truth Tables</h1>
+                <h1 className="text-4xl font-bold text-white">State Tables</h1>
                 <p className="text-white/60 max-w-md mx-auto">
                   Mapping all possibilities in binary logic
                 </p>
               </div>
             )}
             
-            {/* Basic Truth Table Introduction */}
+            {/* Basic State Table Introduction */}
             {currentPhase === 'slide-2' && (
               <div className="text-center space-y-6">
                 <Grid3x3 className="w-24 h-24 mx-auto text-purple-500" />
-                <h2 className="text-3xl font-bold text-white">What is a Truth Table?</h2>
+                <h2 className="text-3xl font-bold text-white">What is a State Table?</h2>
                 <p className="text-white/60 max-w-lg mx-auto">
                   A systematic way to show all possible input combinations and their outputs
                 </p>
@@ -538,7 +538,7 @@ function TruthTablesContent() {
             {currentPhase === 'slide-3' && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-white text-center">Exploring Input Combinations</h2>
-                <InteractiveTruthTable 
+                <InteractiveStateTable 
                   inputs={tableInputs}
                   onInputChange={handleTableInputChange}
                   showOutput={false}
@@ -548,11 +548,11 @@ function TruthTablesContent() {
               </div>
             )}
             
-            {/* AND Truth Table */}
+            {/* AND State Table */}
             {currentPhase === 'slide-4' && (
               <div className="space-y-6">
                 <PatternVisualization pattern="AND" />
-                <InteractiveTruthTable 
+                <InteractiveStateTable 
                   inputs={[
                     { A: false, B: false },
                     { A: false, B: true },
@@ -566,11 +566,11 @@ function TruthTablesContent() {
               </div>
             )}
             
-            {/* OR Truth Table */}
+            {/* OR State Table */}
             {currentPhase === 'slide-5' && (
               <div className="space-y-6">
                 <PatternVisualization pattern="OR" />
-                <InteractiveTruthTable 
+                <InteractiveStateTable 
                   inputs={[
                     { A: false, B: false },
                     { A: false, B: true },
@@ -584,11 +584,11 @@ function TruthTablesContent() {
               </div>
             )}
             
-            {/* NOT Truth Table */}
+            {/* NOT State Table */}
             {currentPhase === 'slide-6' && (
               <div className="space-y-6">
                 <PatternVisualization pattern="NOT" />
-                <SingleInputTruthTable 
+                <SingleInputStateTable 
                   inputs={[false, true]}
                   operation={(a) => !a}
                   showOutput={true}
@@ -596,11 +596,11 @@ function TruthTablesContent() {
               </div>
             )}
             
-            {/* XOR Truth Table */}
+            {/* XOR State Table */}
             {currentPhase === 'slide-7' && (
               <div className="space-y-6">
                 <PatternVisualization pattern="XOR" />
-                <InteractiveTruthTable 
+                <InteractiveStateTable 
                   inputs={[
                     { A: false, B: false },
                     { A: false, B: true },
@@ -622,7 +622,7 @@ function TruthTablesContent() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
                   <div className="bg-white/10 rounded-lg p-4">
                     <h3 className="text-white font-semibold mb-2">Circuit Design</h3>
-                    <p className="text-white/60 text-sm">Engineers use truth tables to design digital circuits</p>
+                    <p className="text-white/60 text-sm">Engineers use state tables to design digital circuits</p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4">
                     <h3 className="text-white font-semibold mb-2">Programming</h3>
@@ -665,7 +665,7 @@ function TruthTablesContent() {
             {currentPhase === 'slide-10' && (
               <div className="text-center space-y-6">
                 <CheckCircle2 className="w-24 h-24 mx-auto text-green-500" />
-                <h2 className="text-3xl font-bold text-white">Truth Tables Mastered!</h2>
+                <h2 className="text-3xl font-bold text-white">State Tables Mastered!</h2>
                 <p className="text-white/60 max-w-lg mx-auto">
                   You now understand how to map and analyze all possible logical outcomes
                 </p>
@@ -693,8 +693,8 @@ function TruthTablesContent() {
         onEntryClick={handleNotebookEntryClick}
       />
       
-      {/* Truth Table Concept Card */}
-      {showTruthTableCard && (
+      {/* State Table Concept Card */}
+      {showStateTableCard && (
         <m.div
           initial={{ opacity: 0, scale: 0.8, y: 50 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -709,16 +709,16 @@ function TruthTablesContent() {
               // Add to dictionary and notebook
               dictionaryService.addEntry({
                 id: 'truth-table',
-                term: 'Truth Table',
+                term: 'State Table',
                 definition: 'A table showing all possible input combinations and their outputs',
                 category: 'computer-science',
                 relatedTerms: ['binary', 'logic', 'AND', 'OR', 'NOT'],
-                examples: ['A 2-input truth table has 4 rows'],
+                examples: ['A 2-input state table has 4 rows'],
                 visualAid: 'Table with inputs and outputs'
               })
               addNotebookEntry({
                 type: 'definition',
-                title: 'Truth Table',
+                title: 'State Table',
                 content: 'A systematic way to show all logical possibilities'
               })
             }}
@@ -726,7 +726,7 @@ function TruthTablesContent() {
           >
             <div className="glass-morphism rounded-2xl p-8 relative">
               <button
-                onClick={() => setShowTruthTableCard(false)}
+                onClick={() => setShowStateTableCard(false)}
                 className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"
               >
                 <X className="w-5 h-5 text-white/60" />
@@ -737,7 +737,7 @@ function TruthTablesContent() {
                   <Table2 className="w-8 h-8 text-cosmic-aurora" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white">Truth Table</h3>
+                  <h3 className="text-2xl font-bold text-white">State Table</h3>
                   <p className="text-white/60 text-sm">New Concept Unlocked</p>
                 </div>
               </div>
@@ -789,7 +789,7 @@ function TruthTablesContent() {
               </m.div>
               
               <h2 className="text-3xl font-bold text-white mb-2">Lesson Complete!</h2>
-              <p className="text-white/80 mb-6">You've mastered Truth Tables!</p>
+              <p className="text-white/80 mb-6">You've mastered State Tables!</p>
               
               {/* Rewards */}
               <div className="bg-cosmic-void/50 rounded-xl p-4 mb-8">
@@ -842,10 +842,10 @@ function TruthTablesContent() {
   )
 }
 
-export default function TruthTablesPage() {
+export default function StateTablesPage() {
   return (
     <ProtectedRoute>
-      <TruthTablesContent />
+      <StateTablesContent />
     </ProtectedRoute>
   )
 }

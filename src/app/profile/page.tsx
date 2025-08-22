@@ -9,6 +9,7 @@ export default function ProfileRedirect() {
   const { profile, loading } = useProfile()
 
   useEffect(() => {
+    console.log('Profile redirect - loading:', loading, 'profile:', profile)
     if (!loading && profile?.profile_id) {
       // Redirect to the user's profile with their profile ID
       router.replace(`/profile/${profile.profile_id}`)
@@ -18,6 +19,10 @@ export default function ProfileRedirect() {
     }
   }, [profile, loading, router])
 
-  // Return null to avoid showing anything during redirect
-  return null
+  // Show loading while checking profile
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white">Loading profile...</div>
+    </div>
+  )
 }

@@ -214,8 +214,8 @@ function InteractiveGate({ type, inputs, onInputChange, size = 'normal' }: {
   )
 }
 
-// Truth Table Component
-function TruthTable({ gateType, currentInputs = [], revealed = false }: { 
+// State Table Component
+function StateTable({ gateType, currentInputs = [], revealed = false }: { 
   gateType: GateType; 
   currentInputs?: boolean[];
   revealed?: boolean 
@@ -295,7 +295,7 @@ function TruthTable({ gateType, currentInputs = [], revealed = false }: {
       <div className="p-4">
         <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
           <Table className="w-5 h-5" />
-          {gateType} Truth Table
+          {gateType} State Table
         </h3>
         <table className="w-full">
           <thead>
@@ -441,7 +441,7 @@ function LogicGatesLessonContent() {
       },
       {
         speaker: 'Byte',
-        text: "Last time, we learned about individual switches - TRUE and FALSE.",
+        text: "Last time, we learned about individual switches - ON and OFF.",
         animation: 'teaching'
       },
       {
@@ -470,14 +470,14 @@ function LogicGatesLessonContent() {
     'slide-2': [
       {
         speaker: 'Byte',
-        text: "This is an AND gate. The rule? It only outputs TRUE when BOTH inputs are TRUE.",
+        text: "This is an AND gate. The rule? It only outputs ON when BOTH inputs are ON.",
         animation: 'explain'
       },
       {
         speaker: 'Byte',
         text: (
           <div className="flex items-center gap-2">
-            <span>Look at the truth table above</span>
+            <span>Look at the state table above</span>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
               <span className="w-2 h-2 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '200ms' }}></span>
@@ -497,7 +497,7 @@ function LogicGatesLessonContent() {
     'slide-3': [
       {
         speaker: 'Byte',
-        text: "This is an OR gate. The rule? It outputs TRUE if AT LEAST ONE input is TRUE.",
+        text: "This is an OR gate. The rule? It outputs ON if AT LEAST ONE input is ON.",
         animation: 'explain'
       },
       {
@@ -509,7 +509,7 @@ function LogicGatesLessonContent() {
     'slide-4': [
       {
         speaker: 'Byte',
-        text: "This is a NOT gate. The rule? It INVERTS the input - TRUE becomes FALSE, FALSE becomes TRUE.",
+        text: "This is a NOT gate. The rule? It INVERTS the input - ON becomes OFF, OFF becomes ON.",
         animation: 'explain'
       },
       {
@@ -521,7 +521,7 @@ function LogicGatesLessonContent() {
     'slide-5': [
       {
         speaker: 'Byte',
-        text: "Truth tables show every possible combination! They're like instruction manuals for gates.",
+        text: "State tables show every possible combination! They're like instruction manuals for gates.",
         animation: 'explain'
       },
       {
@@ -646,7 +646,7 @@ function LogicGatesLessonContent() {
           addNotebookEntry({
             type: 'definition',
             title: 'AND Gate',
-            content: 'Outputs TRUE only when ALL inputs are TRUE. Essential for checking multiple conditions.'
+            content: 'Outputs ON only when ALL inputs are ON. Essential for checking multiple conditions.'
           })
           setHasInteractedAnd(true)
         }
@@ -656,7 +656,7 @@ function LogicGatesLessonContent() {
           addNotebookEntry({
             type: 'definition',
             title: 'OR Gate',
-            content: 'Outputs TRUE when AT LEAST ONE input is TRUE. Used for alternative options.'
+            content: 'Outputs ON when AT LEAST ONE input is ON. Used for alternative options.'
           })
           setHasInteractedOr(true)
         }
@@ -666,7 +666,7 @@ function LogicGatesLessonContent() {
           addNotebookEntry({
             type: 'definition',
             title: 'NOT Gate',
-            content: 'Inverts the input signal. TRUE becomes FALSE, FALSE becomes TRUE.'
+            content: 'Inverts the input signal. ON becomes OFF, OFF becomes ON.'
           })
           setHasInteractedNot(true)
         }
@@ -1119,7 +1119,7 @@ function LogicGatesLessonContent() {
                     </div>
                   )}
                 </div>
-                <TruthTable gateType="AND" currentInputs={andInputs} revealed={true} />
+                <StateTable gateType="AND" currentInputs={andInputs} revealed={true} />
               </div>
             </m.div>
           )}
@@ -1189,7 +1189,7 @@ function LogicGatesLessonContent() {
                     </div>
                   )}
                 </div>
-                <TruthTable gateType="OR" currentInputs={orInputs} revealed={true} />
+                <StateTable gateType="OR" currentInputs={orInputs} revealed={true} />
               </div>
             </m.div>
           )}
@@ -1257,12 +1257,12 @@ function LogicGatesLessonContent() {
                     </div>
                   )}
                 </div>
-                <TruthTable gateType="NOT" currentInputs={notInput} revealed={true} />
+                <StateTable gateType="NOT" currentInputs={notInput} revealed={true} />
               </div>
             </m.div>
           )}
         
-          {/* Slide 5 - Truth Tables */}
+          {/* Slide 5 - State Tables */}
           {currentPhase === 'slide-5' && (
             <m.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1270,11 +1270,11 @@ function LogicGatesLessonContent() {
               transition={{ duration: 0.5 }}
               className="flex flex-col items-center justify-center h-full gap-8"
             >
-              <h2 className="text-3xl font-light text-white/90">Understanding <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-blue-400 to-rose-400">Truth Tables</span></h2>
+              <h2 className="text-3xl font-light text-white/90">Understanding <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-blue-400 to-rose-400">State Tables</span></h2>
               <div className="grid grid-cols-3 gap-6 max-w-5xl">
-                <TruthTable gateType="AND" currentInputs={andInputs} revealed={true} />
-                <TruthTable gateType="OR" currentInputs={orInputs} revealed={true} />
-                <TruthTable gateType="NOT" currentInputs={notInput} revealed={true} />
+                <StateTable gateType="AND" currentInputs={andInputs} revealed={true} />
+                <StateTable gateType="OR" currentInputs={orInputs} revealed={true} />
+                <StateTable gateType="NOT" currentInputs={notInput} revealed={true} />
               </div>
             </m.div>
           )}

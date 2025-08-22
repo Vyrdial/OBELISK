@@ -208,9 +208,9 @@ export default function LogicGatesDemo() {
         </svg>
       </div>
 
-      {/* Truth Table for Current Gate */}
+      {/* State Table for Current Gate */}
       <div className="bg-black/30 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-white mb-2 text-center">{selectedGate} Truth Table</h3>
+        <h3 className="text-sm font-semibold text-white mb-2 text-center">{selectedGate} State Table</h3>
         <table className="text-xs">
           <thead>
             <tr className="text-white/60">

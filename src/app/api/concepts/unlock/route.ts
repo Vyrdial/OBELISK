@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
@@ -48,7 +49,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 

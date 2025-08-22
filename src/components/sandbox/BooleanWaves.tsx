@@ -17,7 +17,7 @@ interface GateConfig {
   glowColor: string
   hasInputB: boolean
   logic: (a: boolean, b?: boolean) => boolean
-  truthTable: Array<Array<number | string>>
+  stateTable: Array<Array<number | string>>
 }
 
 const GATE_CONFIGS: Record<GateType, GateConfig> = {
@@ -30,7 +30,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'violet',
     hasInputB: true,
     logic: (a, b) => a && (b ?? false),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 0],
       [0, 1, 0],
@@ -47,7 +47,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'blue',
     hasInputB: true,
     logic: (a, b) => a || (b ?? false),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 0],
       [0, 1, 1],
@@ -64,7 +64,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'rose',
     hasInputB: false,
     logic: (a) => !a,
-    truthTable: [
+    stateTable: [
       ['A', 'OUT'],
       [0, 1],
       [1, 0]
@@ -79,7 +79,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'teal',
     hasInputB: true,
     logic: (a, b) => a !== (b ?? false),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 0],
       [0, 1, 1],
@@ -96,7 +96,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'purple',
     hasInputB: true,
     logic: (a, b) => !(a && (b ?? false)),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 1],
       [0, 1, 1],
@@ -113,7 +113,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'indigo',
     hasInputB: true,
     logic: (a, b) => !(a || (b ?? false)),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 1],
       [0, 1, 0],
@@ -130,7 +130,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'amber',
     hasInputB: true,
     logic: (a, b) => a === (b ?? false),
-    truthTable: [
+    stateTable: [
       ['A', 'B', 'OUT'],
       [0, 0, 1],
       [0, 1, 0],
@@ -147,7 +147,7 @@ const GATE_CONFIGS: Record<GateType, GateConfig> = {
     glowColor: 'emerald',
     hasInputB: false,
     logic: (a) => a,
-    truthTable: [
+    stateTable: [
       ['A', 'OUT'],
       [0, 0],
       [1, 1]
@@ -161,7 +161,7 @@ export default function BooleanWaves({ onBack }: { onBack?: () => void }) {
   const [selectedGate, setSelectedGate] = useState<GateType>('AND')
   const [inputA, setInputA] = useState(false)
   const [inputB, setInputB] = useState(false)
-  const [showTruthTable, setShowTruthTable] = useState(false)
+  const [showStateTable, setShowStateTable] = useState(false)
   
   const gateConfig = GATE_CONFIGS[selectedGate]
   const output = gateConfig.logic(inputA, inputB)
@@ -508,10 +508,10 @@ export default function BooleanWaves({ onBack }: { onBack?: () => void }) {
           </div>
           
           <button
-            onClick={() => setShowTruthTable(!showTruthTable)}
+            onClick={() => setShowStateTable(!showStateTable)}
             className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all text-sm font-medium"
           >
-            Truth Table
+            State Table
           </button>
         </div>
       </div>
@@ -636,20 +636,20 @@ export default function BooleanWaves({ onBack }: { onBack?: () => void }) {
             className="absolute inset-0 w-full h-full"
           />
           
-          {/* Truth Table Overlay */}
+          {/* State Table Overlay */}
           <AnimatePresence>
-            {showTruthTable && (
+            {showStateTable && (
               <m.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="absolute top-4 right-4 p-4 rounded-lg bg-cosmic-void/95 backdrop-blur-xl border border-white/20"
               >
-                <h4 className="text-white/60 text-xs uppercase tracking-wider mb-3">Truth Table</h4>
+                <h4 className="text-white/60 text-xs uppercase tracking-wider mb-3">State Table</h4>
                 <table className="text-sm">
                   <thead>
                     <tr>
-                      {gateConfig.truthTable[0].map((header, i) => (
+                      {gateConfig.stateTable[0].map((header, i) => (
                         <th key={i} className="px-3 py-1 text-cosmic-aurora font-medium border-b border-white/10">
                           {header}
                         </th>
@@ -657,7 +657,7 @@ export default function BooleanWaves({ onBack }: { onBack?: () => void }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {gateConfig.truthTable.slice(1).map((row, i) => (
+                    {gateConfig.stateTable.slice(1).map((row, i) => (
                       <tr key={i} className="hover:bg-white/5">
                         {row.map((cell, j) => (
                           <td key={j} className="px-3 py-1 text-white/60 text-center font-mono">

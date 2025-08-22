@@ -53,7 +53,7 @@ The system checks both Supabase and localStorage:
 ## Concept IDs Currently Used
 - `binary-states` - Binary States concept
 - `logic-gates` - Logic Gates concept  
-- `truth-tables` - Truth Tables concept
+- `truth-tables` - State Tables concept
 
 ## Adding New Concepts
 

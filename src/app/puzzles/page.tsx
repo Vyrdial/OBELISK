@@ -13,7 +13,7 @@ interface PuzzleChallenge {
   title: string
   description: string
   difficulty: 'Easy' | 'Medium' | 'Hard' | 'Expert'
-  category: 'Logic' | 'Pattern' | 'Circuit' | 'Truth Tables' | 'Boolean'
+  category: 'Logic' | 'Pattern' | 'Circuit' | 'State Tables' | 'Boolean'
   xpReward: number
   stardustReward: number
   completed: boolean
@@ -40,9 +40,9 @@ const puzzles: PuzzleChallenge[] = [
   {
     id: 'truth-table-challenge',
     title: 'Truth Seeker',
-    description: 'Complete truth tables for complex boolean expressions',
+    description: 'Complete state tables for complex boolean expressions',
     difficulty: 'Medium',
-    category: 'Truth Tables',
+    category: 'State Tables',
     xpReward: 250,
     stardustReward: 25,
     completed: false,
@@ -101,7 +101,7 @@ const categoryColors = {
   Logic: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
   Pattern: 'bg-purple-500/20 text-purple-300 border-purple-400/30',
   Circuit: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30',
-  'Truth Tables': 'bg-green-500/20 text-green-300 border-green-400/30',
+  'State Tables': 'bg-green-500/20 text-green-300 border-green-400/30',
   Boolean: 'bg-pink-500/20 text-pink-300 border-pink-400/30'
 }
 

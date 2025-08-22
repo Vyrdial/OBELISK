@@ -721,7 +721,7 @@ function HomeContent() {
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-blue-400 rounded-full" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-white">Truth Tables</p>
+                        <p className="text-sm font-medium text-white">State Tables</p>
                         <p className="text-xs text-white/60">Builds on Binary Logic</p>
                       </div>
                       <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors" />

@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid authentication' }, { status: 401 })
     }
 
-    // Find the user by username in public schema
+    // Find the user by username in api schema
     const { data: targetUser, error: userError } = await supabase
-      .schema('public')
+      .schema('api')
       .from('profiles')
       .select('user_id')
       .eq('username', username.trim())

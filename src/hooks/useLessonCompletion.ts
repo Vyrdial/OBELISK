@@ -158,12 +158,25 @@ export function useLessonCompletion(lessonId: string): UseLessonCompletionReturn
 
 /**
  * Helper function to get stardust animation target position
- * This calculates where the stardust counter is in the navigation bar
+ * This calculates where the stardust counter Star icon is in the navigation bar
  */
 export function getStardustCounterPosition(): { x: number; y: number } {
-  // These values are based on the TopNavigationBar layout
-  const navHeight = 80 // Approximate height of navigation bar with padding
-  const rightOffset = 120 // Distance from right edge where counter typically is
+  // Try to find the actual Star icon element in the StardustCounter using data attribute
+  const starElement = document.querySelector('[data-stardust-target="true"]') || 
+                      document.querySelector('.text-cosmic-stardust.fill-cosmic-stardust')
+  
+  if (starElement) {
+    const rect = starElement.getBoundingClientRect()
+    // Return the exact center of the Star icon
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    }
+  }
+  
+  // Fallback to approximate position if element not found
+  const navHeight = 80
+  const rightOffset = 120
   
   return {
     x: window.innerWidth - rightOffset,

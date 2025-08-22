@@ -909,3 +909,12 @@ input[type="range"]::-moz-range-thumb:hover {
     transform: translateX(-20px) translateY(40px) skewX(2deg);
   }
 }
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}

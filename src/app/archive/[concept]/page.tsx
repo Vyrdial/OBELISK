@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic'
 const demoComponents: Record<string, any> = {
   BinaryStatesDemo: dynamic(() => import('@/components/archive/demos/BinaryStatesDemo'), { ssr: false }),
   LogicGatesDemo: dynamic(() => import('@/components/archive/demos/LogicGatesDemo'), { ssr: false }),
-  TruthTablesDemo: dynamic(() => import('@/components/archive/demos/TruthTablesDemo'), { ssr: false }),
+  StateTablesDemo: dynamic(() => import('@/components/archive/demos/StateTablesDemo'), { ssr: false }),
   SingularityDemo: dynamic(() => import('@/components/archive/demos/SingularityDemo'), { ssr: false }),
   NullityDemo: dynamic(() => import('@/components/archive/demos/NullityDemo'), { ssr: false }),
   MultiplicityDemo: dynamic(() => import('@/components/archive/demos/MultiplicityDemo'), { ssr: false }),

@@ -19,10 +19,10 @@ export const allConcepts: ConceptData[] = [
     address: '0x0001',
     name: 'Binary States',
     category: 'binary',
-    description: 'The foundation of digital logic - TRUE and FALSE',
-    longDescription: 'Binary states represent the two fundamental positions in digital systems: TRUE (1, ON, HIGH) and FALSE (0, OFF, LOW). These states form the basis of all computational logic, where electrical current either flows or doesn\'t flow through a circuit.',
+    description: 'The foundation of digital logic - ON and OFF',
+    longDescription: 'Binary states represent the two fundamental positions in digital systems: ON (1, true, HIGH) and OFF (0, false, LOW). These states form the basis of all computational logic, where electrical current either flows or doesn\'t flow through a circuit.',
     relatedConcepts: ['logic-gates', 'boolean-algebra'],
-    discoveredBy: 'true-false',
+    discoveredBy: 'on-off',
     color: 'purple'
   },
   {
@@ -40,10 +40,10 @@ export const allConcepts: ConceptData[] = [
   {
     id: 'truth-tables',
     address: '0x0003',
-    name: 'Truth Tables',
+    name: 'State Tables',
     category: 'logic',
     description: 'Complete mapping of all possible input-output combinations',
-    longDescription: 'Truth tables systematically list all possible combinations of inputs and their corresponding outputs for logical operations. They provide a complete specification of how a logical system behaves.',
+    longDescription: 'State tables systematically list all possible combinations of inputs and their corresponding outputs for logical operations. They provide a complete specification of how a logical system behaves.',
     unlockRequirements: ['logic-gates'],
     relatedConcepts: ['logic-gates', 'boolean-algebra'],
     discoveredBy: 'truth-tables',

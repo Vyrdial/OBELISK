@@ -3,6 +3,48 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Custom storage adapter that respects remember me preference
+const customAuthStorage = {
+  getItem: (key: string) => {
+    if (typeof window === 'undefined') return null
+    
+    // Check both storages and return whichever has the value
+    const sessionValue = window.sessionStorage.getItem(key)
+    if (sessionValue) return sessionValue
+    
+    const localValue = window.localStorage.getItem(key)
+    return localValue
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window === 'undefined') return
+    
+    // Determine storage based on remember me preference
+    const rememberMe = window.localStorage.getItem('obelisk_remember_me') === 'true'
+    
+    if (rememberMe) {
+      // Use localStorage for persistent sessions
+      window.localStorage.setItem(key, value)
+      // Clear from sessionStorage if it exists there
+      window.sessionStorage.removeItem(key)
+    } else {
+      // Use sessionStorage for temporary sessions (cleared on browser close)
+      window.sessionStorage.setItem(key, value)
+      // Clear from localStorage if it exists there
+      window.localStorage.removeItem(key)
+    }
+  },
+  removeItem: (key: string) => {
+    if (typeof window === 'undefined') return
+    
+    // Remove from both storages
+    window.sessionStorage.removeItem(key)
+    window.localStorage.removeItem(key)
+    
+    // Also clear the remember me preference
+    window.localStorage.removeItem('obelisk_remember_me')
+  }
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: {
     schema: 'api'
@@ -10,40 +52,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    storage: {
-      getItem: (key: string) => {
-        // Check if we're in a browser environment
-        if (typeof window === 'undefined') return null
-        
-        // First check sessionStorage for temporary sessions
-        const sessionItem = window.sessionStorage.getItem(key)
-        if (sessionItem) return sessionItem
-        
-        // Then check localStorage for persistent sessions
-        return window.localStorage.getItem(key)
-      },
-      setItem: (key: string, value: string) => {
-        if (typeof window === 'undefined') return
-        
-        // Check if this should be a temporary session
-        const isTemporary = window.sessionStorage.getItem('obelisk_session_temporary')
-        
-        if (isTemporary === 'true') {
-          // Store in sessionStorage for temporary sessions
-          window.sessionStorage.setItem(key, value)
-        } else {
-          // Store in localStorage for persistent sessions
-          window.localStorage.setItem(key, value)
-        }
-      },
-      removeItem: (key: string) => {
-        if (typeof window === 'undefined') return
-        
-        // Remove from both storages
-        window.sessionStorage.removeItem(key)
-        window.localStorage.removeItem(key)
-      }
-    }
+    storage: customAuthStorage,
+    storageKey: 'obelisk-auth-token',
+    flowType: 'pkce'
   }
 })
 
@@ -51,7 +62,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export interface User {
   id: string
   username: string
-  xp: number
   stardust: number
   unlocked_cosmetics: string[]
   created_at: string

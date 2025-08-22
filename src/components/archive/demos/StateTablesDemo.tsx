@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 
-export default function TruthTablesDemo() {
+export default function StateTablesDemo() {
   const [highlightedRow, setHighlightedRow] = useState<number | null>(null)
   const [selectedOperation, setSelectedOperation] = useState<'AND' | 'OR' | 'NAND' | 'NOR'>('AND')
 
@@ -40,7 +40,7 @@ export default function TruthTablesDemo() {
         ))}
       </div>
 
-      {/* Interactive Truth Table */}
+      {/* Interactive State Table */}
       <div className="bg-black/30 rounded-lg p-6">
         <table className="text-sm">
           <thead>

@@ -14,7 +14,8 @@ import {
   Cpu,
   Code2,
   Waves,
-  Sliders
+  Sliders,
+  Route
 } from 'lucide-react'
 import TopNavigationBar from '@/components/ui/TopNavigationBar'
 import CosmicBackground from '@/components/effects/CosmicBackground'
@@ -69,6 +70,13 @@ const SANDBOX_MODULES: SandboxModule[] = [
     description: 'Single axis value manipulation and visualization',
     icon: Sliders,
     route: '/axis-slider'
+  },
+  {
+    id: 'tsp-solver',
+    name: 'TSP Rubber Band Solver',
+    description: 'Solve the Traveling Salesman Problem using a rubber band analogy with path widening',
+    icon: Route,
+    route: '/tsp-solver'
   }
 ]
 
@@ -90,7 +98,7 @@ function SandboxContent() {
     // Most modules are always unlocked by default
     const alwaysUnlocked = [
       'code-editor', 'logic-playground', 'boolean-waves', 
-      'constraint-lab', 'axis-slider'
+      'constraint-lab', 'axis-slider', 'tsp-solver'
     ]
     if (alwaysUnlocked.includes(moduleId)) return true
     return unlockedModules.includes(moduleId)

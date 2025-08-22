@@ -60,8 +60,8 @@ const modules: Module[] = [
     isExpanded: true,
     lessons: [
       {
-        id: 'true-false',
-        title: 'True and False',
+        id: 'on-off',
+        title: 'On and Off',
         description: 'The binary nature of logical states',
         duration: '15 min',
         xp: 100,

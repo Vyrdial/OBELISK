@@ -9,7 +9,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // Create optimized Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   db: {
-    schema: 'public',
+    schema: 'api',
   },
   auth: {
     autoRefreshToken: true,
@@ -277,7 +277,7 @@ export const optimizedRealtime = {
         'postgres_changes',
         {
           event: '*',
-          schema: 'public',
+          schema: 'api',
           table: 'profiles',
           filter: `id=eq.${userId}`
         },
@@ -301,7 +301,7 @@ export const optimizedRealtime = {
         'postgres_changes',
         {
           event: '*',
-          schema: 'public',
+          schema: 'api',
           table
         },
         callback

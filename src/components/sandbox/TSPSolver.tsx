@@ -1,0 +1,1088 @@
+'use client'
+
+import React, { useRef, useEffect, useState, useCallback } from 'react'
+import { m } from 'framer-motion'
+import { 
+  ArrowLeft, Play, Pause, RotateCcw, Shuffle,
+  Grid3X3, Circle, Layers, Sparkles
+} from 'lucide-react'
+
+interface Point {
+  x: number
+  y: number
+  id: number
+}
+
+interface Props {
+  onBack?: () => void
+}
+
+export default function TSPSolver({ onBack }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [points, setPoints] = useState<Point[]>([])
+  const [tour, setTour] = useState<Point[]>([])
+  const [isSolving, setIsSolving] = useState(false)
+  const [iterations, setIterations] = useState(0)
+  const [wideningSteps, setWideningSteps] = useState(0)
+  const [speed, setSpeed] = useState(50)
+  const [pointCount, setPointCount] = useState(30)
+  const [optimalLength, setOptimalLength] = useState<number | null>(null)
+  const [lowerBound, setLowerBound] = useState<number | null>(null)
+  const [processingTime, setProcessingTime] = useState(0)
+  const [solverType, setSolverType] = useState<'rubber-band' | 'nearest-neighbor' | 'genetic' | 'ant-colony'>('rubber-band')
+  const animationIdRef = useRef<number | null>(null)
+  const iterationsRef = useRef(0)
+  const startTimeRef = useRef<number | null>(null)
+
+  // Distance between two points
+  const dist = (p1: Point, p2: Point) => {
+    const dx = p1.x - p2.x
+    const dy = p1.y - p2.y
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  // Calculate total tour length
+  const calculateTourLength = (t: Point[]) => {
+    if (t.length < 2) return 0
+    let length = 0
+    for (let i = 0; i < t.length; i++) {
+      length += dist(t[i], t[(i + 1) % t.length])
+    }
+    return length
+  }
+
+  // Cross product for convex hull
+  const cross = (o: Point, a: Point, b: Point) => {
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  }
+
+  // Calculate MST lower bound using Prim's algorithm
+  const calculateMSTLowerBound = (pts: Point[]) => {
+    if (pts.length < 2) return 0
+    
+    const n = pts.length
+    const visited = new Array(n).fill(false)
+    const minDist = new Array(n).fill(Infinity)
+    minDist[0] = 0
+    let mstWeight = 0
+    
+    for (let count = 0; count < n; count++) {
+      let u = -1
+      for (let v = 0; v < n; v++) {
+        if (!visited[v] && (u === -1 || minDist[v] < minDist[u])) {
+          u = v
+        }
+      }
+      
+      visited[u] = true
+      mstWeight += minDist[u]
+      
+      for (let v = 0; v < n; v++) {
+        if (!visited[v]) {
+          const distance = dist(pts[u], pts[v])
+          if (distance < minDist[v]) {
+            minDist[v] = distance
+          }
+        }
+      }
+    }
+    
+    // Add the two smallest edges to complete the tour lower bound
+    let minEdge1 = Infinity, minEdge2 = Infinity
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const d = dist(pts[i], pts[j])
+        if (d < minEdge1) {
+          minEdge2 = minEdge1
+          minEdge1 = d
+        } else if (d < minEdge2) {
+          minEdge2 = d
+        }
+      }
+    }
+    
+    return mstWeight + minEdge1
+  }
+
+  // Held-Karp dynamic programming for exact TSP (only for small instances)
+  const calculateOptimalTour = (pts: Point[]) => {
+    const n = pts.length
+    if (n > 15) return null // Too expensive for large instances
+    if (n < 3) return 0
+    
+    // Create distance matrix
+    const distances: number[][] = []
+    for (let i = 0; i < n; i++) {
+      distances[i] = []
+      for (let j = 0; j < n; j++) {
+        distances[i][j] = i === j ? 0 : dist(pts[i], pts[j])
+      }
+    }
+    
+    // DP table: dp[mask][i] = min cost to visit all nodes in mask ending at i
+    const dp: Map<string, number> = new Map()
+    
+    // Helper function to get/set DP values
+    const getDP = (mask: number, last: number) => {
+      const key = `${mask},${last}`
+      return dp.get(key) ?? Infinity
+    }
+    
+    const setDP = (mask: number, last: number, value: number) => {
+      const key = `${mask},${last}`
+      dp.set(key, value)
+    }
+    
+    // Initialize: starting from node 0
+    setDP(1, 0, 0)
+    
+    // Fill DP table
+    for (let mask = 1; mask < (1 << n); mask++) {
+      for (let last = 0; last < n; last++) {
+        if (!(mask & (1 << last))) continue
+        
+        const prevMask = mask ^ (1 << last)
+        if (prevMask === 0) continue
+        
+        let minCost = Infinity
+        for (let prev = 0; prev < n; prev++) {
+          if (!(prevMask & (1 << prev))) continue
+          const cost = getDP(prevMask, prev) + distances[prev][last]
+          minCost = Math.min(minCost, cost)
+        }
+        
+        setDP(mask, last, minCost)
+      }
+    }
+    
+    // Find minimum tour length
+    const allVisited = (1 << n) - 1
+    let minTourLength = Infinity
+    
+    for (let last = 1; last < n; last++) {
+      const cost = getDP(allVisited, last) + distances[last][0]
+      minTourLength = Math.min(minTourLength, cost)
+    }
+    
+    return minTourLength
+  }
+
+  // Find convex hull using Andrew's monotone chain algorithm
+  const convexHull = (pts: Point[]) => {
+    if (pts.length < 3) return pts.slice()
+    
+    pts.sort((a, b) => a.x - b.x || a.y - b.y)
+    
+    const lower: Point[] = []
+    for (let i = 0; i < pts.length; i++) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
+        lower.pop()
+      }
+      lower.push(pts[i])
+    }
+    
+    const upper: Point[] = []
+    for (let i = pts.length - 1; i >= 0; i--) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) {
+        upper.pop()
+      }
+      upper.push(pts[i])
+    }
+    
+    upper.pop()
+    lower.pop()
+    return lower.concat(upper)
+  }
+
+  // Find the best insertion position for a point
+  const findBestInsertionPosition = (tourArr: Point[], point: Point) => {
+    let bestPos = -1
+    let minIncrease = Infinity
+    
+    for (let i = 0; i < tourArr.length; i++) {
+      const j = (i + 1) % tourArr.length
+      const increase = dist(tourArr[i], point) + dist(point, tourArr[j]) - dist(tourArr[i], tourArr[j])
+      
+      if (increase < minIncrease) {
+        minIncrease = increase
+        bestPos = j
+      }
+    }
+    
+    return bestPos
+  }
+
+  // Calculate distance from point to line segment
+  const pointToLineDistance = (p: Point, a: Point, b: Point) => {
+    const A = p.x - a.x
+    const B = p.y - a.y
+    const C = b.x - a.x
+    const D = b.y - a.y
+
+    const dot = A * C + B * D
+    const len_sq = C * C + D * D
+    let param = -1
+    
+    if (len_sq !== 0) {
+      param = dot / len_sq
+    }
+
+    let xx, yy
+
+    if (param < 0) {
+      xx = a.x
+      yy = a.y
+    } else if (param > 1) {
+      xx = b.x
+      yy = b.y
+    } else {
+      xx = a.x + param * C
+      yy = a.y + param * D
+    }
+
+    const dx = p.x - xx
+    const dy = p.y - yy
+    
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  // Widen paths by avoiding narrow channels
+  const widenPaths = useCallback((tourArr: Point[]) => {
+    let improved = false
+    
+    // Try to detect and fix narrow passages by rerouting
+    for (let i = 0; i < tourArr.length - 2; i++) {
+      for (let j = i + 2; j < tourArr.length; j++) {
+        if (j === tourArr.length - 1 && i === 0) continue
+        
+        const a = tourArr[i]
+        const b = tourArr[i + 1]
+        const c = tourArr[j]
+        const d = tourArr[(j + 1) % tourArr.length]
+        
+        // Check if these two edges are very close to each other (creating a narrow channel)
+        let minDist = Infinity
+        
+        // Check distance between edges
+        for (let t = 0; t <= 1; t += 0.1) {
+          const p1 = {
+            x: a.x + t * (b.x - a.x),
+            y: a.y + t * (b.y - a.y),
+            id: -1
+          }
+          const p2 = {
+            x: c.x + t * (d.x - c.x),
+            y: c.y + t * (d.y - c.y),
+            id: -1
+          }
+          const edgeDist = dist(p1, p2)
+          if (edgeDist < minDist) {
+            minDist = edgeDist
+          }
+        }
+        
+        // If edges are creating a narrow channel (too close but not adjacent)
+        if (minDist < 50 && Math.abs(i - j) > 2) {  // Increased threshold for more widening
+          // Try reversing the segment to widen the path
+          const segment = tourArr.slice(i + 1, j + 1).reverse()
+          const oldLength = dist(a, b) + dist(c, d)
+          const newLength = dist(a, c) + dist(b, d)
+          
+          // Only do the swap if it doesn't make the tour much longer
+          if (newLength < oldLength * 1.2) {
+            tourArr.splice(i + 1, j - i, ...segment)
+            improved = true
+            setWideningSteps(prev => prev + 1)
+            return improved // Return early after making a change
+          }
+        }
+      }
+    }
+    
+    // Alternative widening: detect if path goes through tight clusters
+    const segmentLengths: number[] = []
+    for (let i = 0; i < tourArr.length; i++) {
+      const length = dist(tourArr[i], tourArr[(i + 1) % tourArr.length])
+      segmentLengths.push(length)
+    }
+    
+    const avgLength = segmentLengths.reduce((a, b) => a + b, 0) / segmentLengths.length
+    
+    // Find segments that are much longer than average (might be avoiding something)
+    for (let i = 0; i < tourArr.length; i++) {
+      if (segmentLengths[i] > avgLength * 2) {
+        // This is a long segment, try to find a better path
+        const a = tourArr[i]
+        const b = tourArr[(i + 1) % tourArr.length]
+        
+        // Look for intermediate points that might create a better path
+        for (let j = 0; j < tourArr.length; j++) {
+          if (j === i || j === (i + 1) % tourArr.length) continue
+          
+          const intermediate = tourArr[j]
+          const newDist = dist(a, intermediate) + dist(intermediate, b)
+          
+          if (newDist < segmentLengths[i] * 0.9) {
+            // Found a better path through an intermediate point
+            // This suggests the current path is avoiding something
+            improved = true
+            setWideningSteps(prev => prev + 1)
+            break
+          }
+        }
+      }
+    }
+    
+    return improved
+  }, [])
+
+  // Optimize tour using 2-opt swaps
+  const optimizeTour = useCallback((tourArr: Point[]) => {
+    let improved = true
+    let localIterations = 0
+    
+    while (improved && localIterations < 100) {
+      improved = false
+      localIterations++
+      
+      for (let i = 0; i < tourArr.length - 1; i++) {
+        for (let j = i + 2; j < tourArr.length; j++) {
+          if (j === tourArr.length - 1 && i === 0) continue
+          
+          const a = tourArr[i]
+          const b = tourArr[i + 1]
+          const c = tourArr[j]
+          const d = tourArr[(j + 1) % tourArr.length]
+          
+          // If swapping these edges would shorten the tour
+          if (dist(a, b) + dist(c, d) > dist(a, c) + dist(b, d)) {
+            // Reverse the segment between i+1 and j
+            const segment = tourArr.slice(i + 1, j + 1).reverse()
+            tourArr.splice(i + 1, j - i, ...segment)
+            improved = true
+          }
+        }
+      }
+    }
+    
+    return tourArr
+  }, [])
+
+  // Generate random points
+  const generateRandom = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const newPoints: Point[] = []
+    const margin = 50
+    
+    for (let i = 0; i < pointCount; i++) {
+      newPoints.push({
+        x: margin + Math.random() * (canvas.width - 2 * margin),
+        y: margin + Math.random() * (canvas.height - 2 * margin),
+        id: i
+      })
+    }
+    setPoints(newPoints)
+    setTour([])
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+    
+    // Calculate optimal or lower bound
+    const optimal = calculateOptimalTour(newPoints)
+    setOptimalLength(optimal)
+    const bound = calculateMSTLowerBound(newPoints)
+    setLowerBound(bound)
+  }, [pointCount])
+
+  // Generate grid points
+  const generateGrid = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const cols = Math.ceil(Math.sqrt(pointCount))
+    const rows = Math.ceil(pointCount / cols)
+    
+    const newPoints: Point[] = []
+    const marginX = 100
+    const marginY = 80
+    const spacingX = (canvas.width - 2 * marginX) / (cols - 1)
+    const spacingY = (canvas.height - 2 * marginY) / (rows - 1)
+    
+    for (let i = 0; i < pointCount; i++) {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      newPoints.push({
+        x: marginX + col * spacingX + (Math.random() - 0.5) * 20,
+        y: marginY + row * spacingY + (Math.random() - 0.5) * 20,
+        id: i
+      })
+    }
+    setPoints(newPoints)
+    setTour([])
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+    
+    // Calculate optimal or lower bound
+    const optimal = calculateOptimalTour(newPoints)
+    setOptimalLength(optimal)
+    const bound = calculateMSTLowerBound(newPoints)
+    setLowerBound(bound)
+  }, [pointCount])
+
+  // Generate circle points
+  const generateCircle = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const newPoints: Point[] = []
+    const cx = canvas.width / 2
+    const cy = canvas.height / 2
+    const radius = Math.min(canvas.width, canvas.height) * 0.35
+    
+    for (let i = 0; i < pointCount; i++) {
+      const angle = (i / pointCount) * 2 * Math.PI
+      const r = radius * (0.7 + Math.random() * 0.6)
+      newPoints.push({
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle),
+        id: i
+      })
+    }
+    setPoints(newPoints)
+    setTour([])
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+    
+    // Calculate optimal or lower bound
+    const optimal = calculateOptimalTour(newPoints)
+    setOptimalLength(optimal)
+    const bound = calculateMSTLowerBound(newPoints)
+    setLowerBound(bound)
+  }, [pointCount])
+
+  // Generate cluster points
+  const generateClusters = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const newPoints: Point[] = []
+    
+    // Create 3-5 clusters
+    const clusterCount = 3 + Math.floor(Math.random() * 3)
+    const clusters = []
+    
+    for (let i = 0; i < clusterCount; i++) {
+      clusters.push({
+        x: 100 + Math.random() * (canvas.width - 200),
+        y: 100 + Math.random() * (canvas.height - 200),
+        points: Math.floor(pointCount / clusterCount) + (i < pointCount % clusterCount ? 1 : 0)
+      })
+    }
+    
+    let id = 0
+    for (const cluster of clusters) {
+      for (let i = 0; i < cluster.points; i++) {
+        newPoints.push({
+          x: cluster.x - 50 + Math.random() * 100,
+          y: cluster.y - 50 + Math.random() * 100,
+          id: id++
+        })
+      }
+    }
+    
+    setPoints(newPoints)
+    setTour([])
+    setIterations(0)
+    setWideningSteps(0)
+  }, [pointCount])
+
+  // Start solving the TSP
+  const startSolving = useCallback(() => {
+    if (points.length < 3) {
+      alert("Please generate or add at least 3 points first.")
+      return
+    }
+    
+    if (isSolving) return
+    setIsSolving(true)
+    startTimeRef.current = performance.now()
+    setProcessingTime(0)
+    
+    // Start with convex hull
+    let currentTour = tour
+    if (currentTour.length === 0) {
+      currentTour = convexHull(points)
+      
+      // Add interior points
+      const interior = points.filter(p => !currentTour.includes(p))
+      
+      // Sort by distance from center
+      let cx = 0, cy = 0
+      for (let p of points) {
+        cx += p.x
+        cy += p.y
+      }
+      cx /= points.length
+      cy /= points.length
+      
+      interior.sort((a, b) => {
+        const distA = dist(a, {x: cx, y: cy, id: -1})
+        const distB = dist(b, {x: cx, y: cy, id: -1})
+        return distB - distA // Farther points first
+      })
+      
+      for (let point of interior) {
+        const bestPos = findBestInsertionPosition(currentTour, point)
+        if (bestPos !== -1) {
+          currentTour.splice(bestPos, 0, point)
+        }
+      }
+      
+      setTour(currentTour)
+    }
+    
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+  }, [points, tour, isSolving])
+
+  // Animation loop for solving
+  const animateSolution = useCallback(() => {
+    if (!isSolving) return
+    
+    // Update processing time
+    if (startTimeRef.current) {
+      const elapsed = performance.now() - startTimeRef.current
+      setProcessingTime(elapsed)
+    }
+    
+    const stepsPerFrame = Math.max(1, Math.floor(speed / 10))
+    
+    for (let step = 0; step < stepsPerFrame; step++) {
+      iterationsRef.current += 1
+      setIterations(iterationsRef.current)
+      
+      // Occasionally try to widen paths
+      if (iterationsRef.current % 5 === 0) {  // More frequent widening attempts
+        setTour(prevTour => {
+          const newTour = [...prevTour]
+          widenPaths(newTour)
+          return newTour
+        })
+      }
+      
+      // Apply optimization
+      setTour(prevTour => optimizeTour([...prevTour]))
+      
+      if (iterationsRef.current > 200) {
+        setIsSolving(false)
+        return
+      }
+    }
+    
+    animationIdRef.current = requestAnimationFrame(animateSolution)
+  }, [isSolving, speed, widenPaths, optimizeTour])
+
+  // Stop solving
+  const stopSolving = () => {
+    setIsSolving(false)
+    if (animationIdRef.current) {
+      cancelAnimationFrame(animationIdRef.current)
+      animationIdRef.current = null
+    }
+  }
+
+  // Reset everything
+  const reset = () => {
+    stopSolving()
+    setPoints([])
+    setTour([])
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+    setOptimalLength(null)
+    setLowerBound(null)
+    setProcessingTime(0)
+    startTimeRef.current = null
+  }
+
+  // Draw coordinate grid
+  const drawGrid = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    const gridSize = 50
+    
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)' // slate-400 with opacity
+    ctx.lineWidth = 1
+    
+    // Vertical lines
+    for (let x = 0; x <= canvas.width; x += gridSize) {
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, canvas.height)
+      ctx.stroke()
+    }
+    
+    // Horizontal lines
+    for (let y = 0; y <= canvas.height; y += gridSize) {
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(canvas.width, y)
+      ctx.stroke()
+    }
+    
+    // Draw axes with stronger lines
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)' // slate-300 with opacity
+    ctx.lineWidth = 2
+    
+    // X axis
+    ctx.beginPath()
+    ctx.moveTo(0, canvas.height / 2)
+    ctx.lineTo(canvas.width, canvas.height / 2)
+    ctx.stroke()
+    
+    // Y axis
+    ctx.beginPath()
+    ctx.moveTo(canvas.width / 2, 0)
+    ctx.lineTo(canvas.width / 2, canvas.height)
+    ctx.stroke()
+    
+    // Draw coordinates
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.8)' // slate-200 with opacity
+    ctx.font = '12px monospace'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    
+    // X coordinates
+    for (let x = gridSize; x < canvas.width; x += gridSize) {
+      ctx.fillText(x.toString(), x, canvas.height / 2 + 5)
+    }
+    
+    // Y coordinates
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    for (let y = gridSize; y < canvas.height; y += gridSize) {
+      if (Math.abs(y - canvas.height / 2) > 10) {
+        ctx.fillText(y.toString(), canvas.width / 2 + 5, y)
+      }
+    }
+  }
+
+  // Draw everything
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    
+    // Fill background
+    ctx.fillStyle = '#1e293b' // slate-800
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Draw grid
+    drawGrid(ctx, canvas)
+    
+    // Draw the tour path
+    if (tour.length > 2) {
+      // Draw widened path areas
+      for (let i = 0; i < tour.length; i++) {
+        const a = tour[i]
+        const b = tour[(i + 1) % tour.length]
+        
+        // Draw a wider semi-transparent line to represent path width
+        ctx.beginPath()
+        ctx.moveTo(a.x, a.y)
+        ctx.lineTo(b.x, b.y)
+        ctx.strokeStyle = 'rgba(0, 170, 255, 0.1)'
+        ctx.lineWidth = 40
+        ctx.stroke()
+      }
+      
+      // Draw the actual tour path
+      ctx.beginPath()
+      ctx.moveTo(tour[0].x, tour[0].y)
+      for (let i = 1; i < tour.length; i++) {
+        ctx.lineTo(tour[i].x, tour[i].y)
+      }
+      ctx.closePath()
+      ctx.strokeStyle = '#ff9d00'
+      ctx.lineWidth = 3
+      ctx.stroke()
+      
+      // Draw direction indicators
+      for (let i = 0; i < tour.length; i++) {
+        const a = tour[i]
+        const b = tour[(i + 1) % tour.length]
+        
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const length = Math.sqrt(dx * dx + dy * dy)
+        const unitX = dx / length
+        const unitY = dy / length
+        
+        // Draw arrowhead
+        const arrowSize = 8
+        const arrowX = a.x + dx * 0.5
+        const arrowY = a.y + dy * 0.5
+        
+        ctx.beginPath()
+        ctx.moveTo(arrowX, arrowY)
+        ctx.lineTo(arrowX - arrowSize * unitX - arrowSize * unitY, arrowY - arrowSize * unitY + arrowSize * unitX)
+        ctx.lineTo(arrowX - arrowSize * unitX + arrowSize * unitY, arrowY - arrowSize * unitY - arrowSize * unitX)
+        ctx.closePath()
+        ctx.fillStyle = '#ff9d00'
+        ctx.fill()
+      }
+    }
+    
+    // Draw points
+    for (let p of points) {
+      const inTour = tour.includes(p)
+      
+      ctx.fillStyle = inTour ? '#39ff14' : '#ff3366'
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI)
+      ctx.fill()
+      
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI)
+      ctx.stroke()
+      
+      // Draw point ID
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '12px Arial'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(p.id.toString(), p.x, p.y)
+    }
+  }, [points, tour])
+
+  // Handle canvas click to add points
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const newPoint: Point = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      id: points.length
+    }
+    
+    const newPoints = [...points, newPoint]
+    setPoints(newPoints)
+    setTour([])
+    iterationsRef.current = 0
+    setIterations(0)
+    setWideningSteps(0)
+    
+    // Calculate optimal or lower bound
+    const optimal = calculateOptimalTour(newPoints)
+    setOptimalLength(optimal)
+    const bound = calculateMSTLowerBound(newPoints)
+    setLowerBound(bound)
+  }, [points])
+
+  // Effect to handle animation
+  useEffect(() => {
+    if (isSolving) {
+      animationIdRef.current = requestAnimationFrame(animateSolution)
+    }
+    
+    return () => {
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current)
+      }
+    }
+  }, [isSolving, animateSolution])
+
+  // Effect to draw on canvas
+  useEffect(() => {
+    draw()
+  }, [draw])
+
+  // Initialize with some points
+  useEffect(() => {
+    generateRandom()
+  }, []) // Empty deps intentionally
+
+  const tourLength = Math.round(calculateTourLength(tour))
+  
+  // Calculate optimality percentage
+  const getOptimalityPercentage = () => {
+    if (!tourLength || tourLength === 0) return null
+    
+    if (optimalLength) {
+      // We have exact optimal
+      return ((optimalLength / tourLength) * 100).toFixed(1)
+    } else if (lowerBound) {
+      // We have lower bound
+      return ((lowerBound / tourLength) * 100).toFixed(1)
+    }
+    return null
+  }
+  
+  const optimalityPercent = getOptimalityPercentage()
+
+  return (
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 overflow-hidden">
+      {/* Exit Button */}
+      {onBack && (
+        <m.button
+          onClick={onBack}
+          className="absolute top-4 left-4 z-50 p-2.5 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <ArrowLeft className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
+        </m.button>
+      )}
+
+      {/* Controls */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+        <div className="flex flex-col gap-3">
+          {/* Solver Type Selector */}
+          <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-3 border border-white/20 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <span className="text-white/60 text-xs font-medium mr-2">Solver:</span>
+              <button
+                onClick={() => setSolverType('rubber-band')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  solverType === 'rubber-band'
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                    : 'bg-white/5 text-white/50 hover:bg-white/10'
+                }`}
+              >
+                Rubber Band
+              </button>
+              <button
+                onClick={() => alert('Nearest Neighbor solver coming soon!')}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/30 hover:bg-white/10 transition-all relative group"
+              >
+                Nearest Neighbor
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Coming Soon
+                </span>
+              </button>
+              <button
+                onClick={() => alert('Genetic Algorithm solver coming soon!')}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/30 hover:bg-white/10 transition-all relative group"
+              >
+                Genetic
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Coming Soon
+                </span>
+              </button>
+              <button
+                onClick={() => alert('Ant Colony solver coming soon!')}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/30 hover:bg-white/10 transition-all relative group"
+              >
+                Ant Colony
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Coming Soon
+                </span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Main Controls */}
+          <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-2xl">
+            <div className="flex items-center gap-2">
+              {/* Generate buttons */}
+              <button
+              onClick={generateRandom}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 text-orange-400 hover:from-orange-500/30 hover:to-orange-600/30 transition-all group"
+              title="Random Points"
+            >
+              <Shuffle className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={generateGrid}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 text-orange-400 hover:from-orange-500/30 hover:to-orange-600/30 transition-all group"
+              title="Grid Points"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={generateCircle}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 text-orange-400 hover:from-orange-500/30 hover:to-orange-600/30 transition-all group"
+              title="Circle Points"
+            >
+              <Circle className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={generateClusters}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 text-orange-400 hover:from-orange-500/30 hover:to-orange-600/30 transition-all group"
+              title="Cluster Points"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+
+            <div className="w-px h-8 bg-white/20 mx-2" />
+
+            {/* Control buttons */}
+            <button
+              onClick={startSolving}
+              disabled={isSolving}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-green-500/20 to-green-600/20 text-green-400 hover:from-green-500/30 hover:to-green-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <Play className="w-4 h-4" />
+              <span className="text-sm font-medium">Start</span>
+            </button>
+            
+            <button
+              onClick={stopSolving}
+              disabled={!isSolving}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/20 text-red-400 hover:from-red-500/30 hover:to-red-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <Pause className="w-4 h-4" />
+              <span className="text-sm font-medium">Stop</span>
+            </button>
+            
+            <button
+              onClick={reset}
+              className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20 text-purple-400 hover:from-purple-500/30 hover:to-purple-600/30 transition-all"
+              title="Reset"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+
+            <div className="w-px h-8 bg-white/20 mx-2" />
+
+            {/* Speed control */}
+            <div className="flex items-center gap-2">
+              <span className="text-white/60 text-sm">Speed:</span>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+                className="w-24 accent-orange-500"
+              />
+            </div>
+
+            {/* Point count */}
+            <div className="flex items-center gap-2">
+              <span className="text-white/60 text-sm">Points:</span>
+              <input
+                type="range"
+                min="5"
+                max="100"
+                value={pointCount}
+                onChange={(e) => setPointCount(Number(e.target.value))}
+                className="w-24 accent-orange-500"
+              />
+              <span className="text-orange-400 font-mono text-sm w-8">{pointCount}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="absolute inset-0 pt-40 pb-32 px-4 flex items-center justify-center">
+        <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-slate-800">
+          <canvas
+            ref={canvasRef}
+            width={1200}
+            height={600}
+            onClick={handleCanvasClick}
+            className="w-full h-full bg-slate-800 cursor-crosshair"
+          />
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40">
+        <div className="bg-black/80 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-2xl">
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">Points</div>
+              <div className="text-white text-2xl font-bold">{points.length}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">Tour Length</div>
+              <div className="text-white text-2xl font-bold">{tourLength}</div>
+            </div>
+            {optimalityPercent && (
+              <div className="text-center">
+                <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">
+                  {optimalLength ? 'vs Optimal' : 'vs Lower Bound'}
+                </div>
+                <div className={`text-2xl font-bold ${
+                  parseFloat(optimalityPercent) >= 95 ? 'text-green-400' :
+                  parseFloat(optimalityPercent) >= 90 ? 'text-yellow-400' :
+                  'text-orange-400'
+                }`}>
+                  {optimalityPercent}%
+                </div>
+              </div>
+            )}
+            <div className="text-center">
+              <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">Time</div>
+              <div className="text-white text-2xl font-bold">
+                {processingTime < 1000 
+                  ? `${Math.round(processingTime)}ms`
+                  : `${(processingTime / 1000).toFixed(2)}s`
+                }
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">Iterations</div>
+              <div className="text-white text-2xl font-bold">{iterations}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-orange-400 text-xs uppercase tracking-wider mb-1">Widening</div>
+              <div className="text-white text-2xl font-bold">{wideningSteps}</div>
+            </div>
+            {optimalLength && (
+              <div className="text-center border-l border-white/20 pl-6">
+                <div className="text-green-400 text-xs uppercase tracking-wider mb-1">Optimal Tour</div>
+                <div className="text-green-400 text-xl font-bold">{Math.round(optimalLength)}</div>
+              </div>
+            )}
+            {!optimalLength && lowerBound && (
+              <div className="text-center border-l border-white/20 pl-6">
+                <div className="text-blue-400 text-xs uppercase tracking-wider mb-1">MST Bound</div>
+                <div className="text-blue-400 text-xl font-bold">{Math.round(lowerBound)}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30">
+        <div className="flex items-center gap-6 text-xs text-white/60">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-orange-500" />
+            <span>Current Path</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-blue-400/30" />
+            <span>Widened Path</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-pink-500" />
+            <span>Points</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="absolute top-4 right-4 z-30">
+        <div className="bg-black/60 backdrop-blur-xl rounded-xl px-3 py-2 border border-white/10 text-xs text-white/50">
+          <div>Click canvas to add points</div>
+          <div>Algorithm avoids narrow channels</div>
+        </div>
+      </div>
+    </div>
+    </div>
+  )
+}

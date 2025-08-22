@@ -51,7 +51,10 @@ export default function StardustCounter({
         transition={{ duration: 0.8, ease: "easeInOut" }}
         className="relative"
       >
-        <Star className={`${config.icon} text-cosmic-stardust fill-cosmic-stardust drop-shadow-[0_0_8px_rgba(241,196,64,0.5)]`} />
+        <Star 
+          className={`${config.icon} text-cosmic-stardust fill-cosmic-stardust drop-shadow-[0_0_8px_rgba(241,196,64,0.5)]`}
+          data-stardust-target="true"
+        />
         <div className={`absolute inset-0 ${config.icon} bg-gradient-to-br from-cosmic-stardust/20 to-cosmic-aurora/20 blur-sm`} />
       </m.div>
       

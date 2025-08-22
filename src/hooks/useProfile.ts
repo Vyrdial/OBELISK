@@ -69,12 +69,6 @@ export function useProfile() {
     return updateProfile({ stardust: profile.stardust + amount })
   }
 
-  // Add XP
-  const addXP = async (amount: number) => {
-    if (!profile) return null
-    return updateProfile({ xp: profile.xp + amount })
-  }
-
   // Add achievement
   const addAchievement = async (achievement: string) => {
     if (!profile || profile.achievements.includes(achievement)) return null
@@ -113,7 +107,6 @@ export function useProfile() {
     error,
     updateProfile,
     addStardust,
-    addXP,
     addAchievement,
     unlockCosmetic,
     unlockModule,

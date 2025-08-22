@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, Sparkles, BookOpen, Users, Star, Zap, Brain, Rocket } from 'lucide-react'
 import CosmicBackground from '@/components/effects/CosmicBackground'
 import ClientOnly from '@/components/effects/ClientOnly'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Cosmic taglines that rotate
 const taglines = [
@@ -47,8 +48,17 @@ const features = [
 
 export default function WelcomePage() {
   const router = useRouter()
+  const { session } = useAuth()
   const [currentTagline, setCurrentTagline] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (session) {
+      // User is already logged in, redirect to home
+      router.push('/home')
+    }
+  }, [session, router])
 
   useEffect(() => {
     setIsVisible(true)

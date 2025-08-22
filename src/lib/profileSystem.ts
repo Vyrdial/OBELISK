@@ -29,8 +29,6 @@ export interface UserProfile {
   profile_id: number
   username: string
   display_name: string
-  cosmic_title: string
-  xp: number
   stardust: number
   evolution_stage: string
   unlocked_cosmetics: string[]
@@ -68,8 +66,6 @@ export async function getProfileById(profileId: number): Promise<UserProfile | n
       profile_id: profileData.profile_id,
       username: profileData.username,
       display_name: profileData.display_name,
-      cosmic_title: '',
-      xp: profileData.xp || 0,
       stardust: profileData.stardust || 0,
       evolution_stage: 'nebula',
       unlocked_cosmetics: [],
@@ -114,7 +110,6 @@ export async function getCurrentUserProfileId(): Promise<number | null> {
 export function generateCosmicProfile(): {
   username: string
   display_name: string
-  cosmic_title: string
 } {
   const adjective = COSMIC_ADJECTIVES[Math.floor(Math.random() * COSMIC_ADJECTIVES.length)]
   const noun = COSMIC_NOUNS[Math.floor(Math.random() * COSMIC_NOUNS.length)]
@@ -125,12 +120,10 @@ export function generateCosmicProfile(): {
   const username = `${adjective.toLowerCase()}_${noun.toLowerCase()}_${randomSuffix}`
   
   const display_name = `${adjective} ${noun}`
-  const cosmic_title = `${display_name} ${title}`
   
   return {
     username,
-    display_name,
-    cosmic_title
+    display_name
   }
 }
 
@@ -145,8 +138,7 @@ export async function createUserProfile(userId: string): Promise<UserProfile | n
       .rpc('create_profile_with_auto_id', {
         p_user_id: userId,
         p_username: profile.username,
-        p_display_name: profile.display_name,
-        p_cosmic_title: profile.cosmic_title
+        p_display_name: profile.display_name
       })
 
     if (error) {
@@ -158,8 +150,6 @@ export async function createUserProfile(userId: string): Promise<UserProfile | n
         user_id: userId,
         username: profile.username,
         display_name: profile.display_name,
-        cosmic_title: profile.cosmic_title,
-        xp: 0,
         stardust: 100,
         evolution_stage: 'Sand',
         unlocked_cosmetics: ['classic-singularity'],
@@ -281,16 +271,3 @@ export async function addStardustToProfile(userId: string, amount: number): Prom
   }
 }
 
-export async function addXPToProfile(userId: string, amount: number): Promise<UserProfile | null> {
-  try {
-    // Get current profile
-    const currentProfile = await getUserProfile(userId)
-    if (!currentProfile) return null
-
-    const newXP = currentProfile.xp + amount
-    return updateUserProfile(userId, { xp: newXP })
-  } catch (error) {
-    console.error('Error adding XP:', error)
-    return null
-  }
-}

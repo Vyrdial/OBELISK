@@ -18,30 +18,108 @@ import ConceptViewer, { Concept } from '@/components/lesson/ConceptViewer'
 
 type LessonPhase = 'slide-1' | 'slide-2' | 'slide-3' | 'slide-4' | 'slide-5' | 'slide-6' | 'slide-7' | 'slide-8' | 'slide-9' | 'complete'
 
-// Simple Binary Switch Component
+// Simple Binary Switch Component with Wires
 function BinaryStateSwitch() {
   const [value, setValue] = useState(false)
   
+  // Wire path generator (simplified bezier curves)
+  const createWirePath = (startX: number, startY: number, endX: number, endY: number) => {
+    const controlDistance = 30
+    return `M ${startX} ${startY} C ${startX + controlDistance} ${startY}, ${endX - controlDistance} ${endY}, ${endX} ${endY}`
+  }
+  
   return (
-    <div className="flex flex-col items-center gap-4">
-      <button
-        onClick={() => setValue(!value)}
-        className={`relative w-32 h-16 rounded-full transition-all duration-300 ${
-          value ? 'bg-green-500/20 border-2 border-green-400' : 'bg-red-500/20 border-2 border-red-400'
-        }`}
-      >
-        <m.div
-          className={`absolute w-12 h-12 rounded-full ${
-            value ? 'bg-green-400' : 'bg-red-400'
+    <div className="relative flex flex-col items-center gap-4">
+      {/* Wire visualization container */}
+      <div className="absolute inset-0 pointer-events-none overflow-visible">
+        <svg 
+          className="absolute" 
+          viewBox="-700 0 2000 400"
+          style={{ 
+            width: '200vw', 
+            height: '400px', 
+            left: '50%', 
+            top: '50%', 
+            transform: 'translate(-50%, -50%)',
+            minWidth: '2000px'
+          }}
+        >
+          {/* Right wire - connects to right edge of switch and extends off screen */}
+          <g>
+            <path
+              d={createWirePath(366, 168, 1200, 168)}
+              fill="none"
+              stroke={value ? '#10b981' : '#ffffff33'}
+              strokeWidth="3"
+              className="transition-all duration-500"
+            />
+            {value && (
+              <>
+                <circle r="6" fill="#10b981">
+                  <animateMotion dur="1s" repeatCount="indefinite">
+                    <mpath href="#right-wire-path" />
+                  </animateMotion>
+                </circle>
+                <path
+                  id="right-wire-path"
+                  d={createWirePath(366, 168, 1200, 168)}
+                  fill="none"
+                  stroke="none"
+                />
+              </>
+            )}
+          </g>
+          
+          {/* Left wire - connects to left edge of switch and extends off screen */}
+          <g>
+            <path
+              d={createWirePath(234, 168, -600, 168)}
+              fill="none"
+              stroke={value ? '#10b981' : '#ffffff33'}
+              strokeWidth="3"
+              className="transition-all duration-500"
+            />
+            {value && (
+              <>
+                <circle r="6" fill="#10b981">
+                  <animateMotion dur="1s" repeatCount="indefinite">
+                    <mpath href="#left-wire-path" />
+                  </animateMotion>
+                </circle>
+                <path
+                  id="left-wire-path"
+                  d={createWirePath(234, 168, -600, 168)}
+                  fill="none"
+                  stroke="none"
+                />
+              </>
+            )}
+          </g>
+        </svg>
+      </div>
+      
+      {/* The switch itself */}
+      <div className="relative z-10">
+        <button
+          onClick={() => setValue(!value)}
+          className={`relative w-32 h-16 rounded-full transition-all duration-300 ${
+            value ? 'bg-green-500/20 border-2 border-green-400 shadow-lg shadow-green-500/30' : 'bg-red-500/20 border-2 border-red-400'
           }`}
-          style={{ top: '6px', left: value ? '66px' : '6px' }}
-          initial={false}
-          animate={{ left: value ? '66px' : '6px' }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        />
-      </button>
-      <div className="text-white text-lg font-semibold">
-        {value ? 'TRUE' : 'FALSE'}
+        >
+          <m.div
+            className={`absolute w-12 h-12 rounded-full ${
+              value ? 'bg-green-400' : 'bg-red-400'
+            }`}
+            style={{ top: '6px', left: value ? '66px' : '6px' }}
+            initial={false}
+            animate={{ left: value ? '66px' : '6px' }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          />
+        </button>
+      </div>
+      
+      <div className="text-white text-lg font-semibold mt-2">
+        {value ? 'ON' : 'OFF'}
       </div>
     </div>
   )
@@ -94,12 +172,6 @@ function PixelGrid() {
           />
         ))}
       </div>
-      
-      <p className="text-white/60 text-center max-w-md mx-auto">
-        Each pixel is a binary decision: <span className="text-cyan-400">TRUE (1) = ON</span>, 
-        <span className="text-gray-400"> FALSE (0) = OFF</span>. 
-        Millions of these create everything you see!
-      </p>
     </div>
   )
 }
@@ -330,8 +402,8 @@ function KeyboardExample() {
       </div>
       
       <p className="text-white/50 text-center max-w-md mx-auto text-sm leading-relaxed">
-        Each key is a binary switch: <span className="text-red-400">FALSE (0)</span> when released, 
-        <span className="text-green-400"> TRUE (1)</span> when pressed. 
+        Each key is a binary switch: <span className="text-red-400">OFF (0)</span> when released, 
+        <span className="text-green-400"> ON (1)</span> when pressed. 
         The computer checks this thousands of times per second!
       </p>
     </div>
@@ -382,18 +454,18 @@ function BinarySwitch({ value, onChange, label }: { value: boolean; onChange: (v
         </m.div>
       </button>
       <div className="flex gap-6 text-xs">
-        <span className={`transition-all ${!value ? 'text-red-400 font-medium' : 'text-white/20'}`}>FALSE</span>
-        <span className={`transition-all ${value ? 'text-green-400 font-medium' : 'text-white/20'}`}>TRUE</span>
+        <span className={`transition-all ${!value ? 'text-red-400 font-medium' : 'text-white/20'}`}>OFF</span>
+        <span className={`transition-all ${value ? 'text-green-400 font-medium' : 'text-white/20'}`}>ON</span>
       </div>
     </div>
   )
 }
 
-function TrueFalseLesson() {
+function OnOffLesson() {
   const router = useRouter()
   const { profile, addStardust } = useProfile()
   const { unlockConcept } = useUnlockedConcepts()
-  const { isCompleted, completeLesson } = useLessonCompletion('true-false')
+  const { isCompleted, completeLesson } = useLessonCompletion('on-off')
   const [currentPhase, setCurrentPhase] = useState<LessonPhase>('slide-1')
   const [currentDialogIndex, setCurrentDialogIndex] = useState(0)
   const [showCompletionScreen, setShowCompletionScreen] = useState(false)
@@ -418,29 +490,29 @@ function TrueFalseLesson() {
   const binaryConcept: Concept = {
     id: 'binary-states',
     name: 'Binary States',
-    description: 'The foundation of digital logic - everything is either TRUE or FALSE',
-    whyItMatters: 'Binary states are how computers make decisions. Every calculation, every pixel on your screen, every character you type - it all comes down to millions of TRUE/FALSE decisions happening billions of times per second.',
+    description: 'The foundation of digital logic - everything is either ON or OFF',
+    whyItMatters: 'Binary states are how computers make decisions. Every calculation, every pixel on your screen, every character you type - it all comes down to millions of ON/OFF decisions happening billions of times per second.',
     examples: [
       {
-        id: 'true-state',
-        name: 'TRUE State',
-        description: 'Represents ON, YES, or 1',
+        id: 'on-state',
+        name: 'ON State',
+        description: 'Represents true, YES, or 1',
         whyItMatters: 'The presence of electrical current in a circuit.',
         demonstration: (
           <div className="flex flex-col items-center gap-4">
-            <BinaryDisplay value={true} label="TRUE = 1 = ON" />
+            <BinaryDisplay value={true} label="ON = 1 = true" />
             <p className="text-green-400 text-sm">Current is flowing</p>
           </div>
         )
       },
       {
-        id: 'false-state',
-        name: 'FALSE State',
-        description: 'Represents OFF, NO, or 0',
+        id: 'off-state',
+        name: 'OFF State',
+        description: 'Represents false, NO, or 0',
         whyItMatters: 'The absence of electrical current in a circuit.',
         demonstration: (
           <div className="flex flex-col items-center gap-4">
-            <BinaryDisplay value={false} label="FALSE = 0 = OFF" />
+            <BinaryDisplay value={false} label="OFF = 0 = false" />
             <p className="text-red-400 text-sm">No current flowing</p>
           </div>
         )
@@ -458,12 +530,12 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "Today we're starting at the very beginning - the foundation of ALL computer science.",
+        text: "Today we're starting at the very beginning - the foundation of ALL computers.",
         animation: 'excited'
       },
       {
         speaker: 'Byte',
-        text: "Everything in the digital world is built on just two states: TRUE and FALSE.",
+        text: "Everything in the digital world is built on just two states: ON and OFF.",
         animation: 'teaching'
       }
     ],
@@ -475,7 +547,7 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "When it's TRUE, electricity flows. When it's FALSE, it stops.",
+        text: "When it's ON, electricity flows. When it's OFF, it stops.",
         animation: 'teaching'
       },
       {
@@ -487,12 +559,12 @@ function TrueFalseLesson() {
     'slide-3': [
       {
         speaker: 'Byte',
-        text: "In the physical world, TRUE means electricity is flowing through a circuit.",
+        text: "In the physical world, ON means electricity is flowing through a circuit.",
         animation: 'teaching'
       },
       {
         speaker: 'Byte',
-        text: "FALSE means no electricity. It's that simple, yet that powerful!",
+        text: "OFF means no electricity. It's that simple, yet that powerful!",
         animation: 'excited'
       },
       {
@@ -509,29 +581,29 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "TRUE can be written as: 1, ON, YES, or HIGH voltage.",
+        text: "ON can be written as: 1, true, YES, or HIGH voltage.",
         animation: 'listing'
       },
       {
         speaker: 'Byte',
-        text: "FALSE can be written as: 0, OFF, NO, or LOW voltage.",
+        text: "OFF can be written as: 0, false, NO, or LOW voltage.",
         animation: 'listing'
       }
     ],
     'slide-5': [
       {
         speaker: 'Byte',
-        text: "Try playing with these switches! Each one is independent.",
+        text: "We can have multiple independent switches. Changing one doesn't change the other!",
         animation: 'pointing'
       },
       {
         speaker: 'Byte',
-        text: "Notice how each switch has exactly two states - never anything in between.",
+        text: "Each switch has exactly two states - no more, no less.",
         animation: 'teaching'
       },
       {
         speaker: 'Byte',
-        text: "This is called 'binary' - bi meaning two. Two states, two choices, two possibilities.",
+        text: "This is called 'binary' - bi meaning two. Two states, two possibilities.",
         animation: 'excited'
       }
     ],
@@ -543,12 +615,12 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "Each key is a switch. Press it = TRUE. Release it = FALSE.",
+        text: "Each key is a switch. Press it = ON. Release it = OFF.",
         animation: 'demonstrating'
       },
       {
         speaker: 'Byte',
-        text: "The computer checks thousands of times per second: Is this key pressed? TRUE or FALSE?",
+        text: "The computer checks thousands of times per second: Is this key ON or OFF?",
         animation: 'fast'
       }
     ],
@@ -560,7 +632,7 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "Each pixel asks: Should I be lit? TRUE or FALSE.",
+        text: "Each pixel asks: Should I be on or off?",
         animation: 'teaching'
       },
       {
@@ -582,7 +654,7 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "That's where logic gates come in - that's our next lesson!",
+        text: "That's where binary logic comes in - our next lesson!",
         animation: 'wink'
       }
     ],
@@ -594,7 +666,7 @@ function TrueFalseLesson() {
       },
       {
         speaker: 'Byte',
-        text: "Every app, every game, every AI - they all start with TRUE and FALSE.",
+        text: "Every app, every game, every AI - they all start with ON and OFF.",
         animation: 'proud'
       },
       {
@@ -633,7 +705,7 @@ function TrueFalseLesson() {
       addNotebookEntry({
         type: 'concept',
         title: 'Binary States',
-        content: 'The foundation of digital logic - TRUE/FALSE, 1/0, ON/OFF'
+        content: 'The foundation of digital logic - ON/OFF, 1/0, true/false'
       })
     }
   }, [currentPhase])
@@ -708,6 +780,9 @@ function TrueFalseLesson() {
   const spawnStardustParticles = useCallback(() => {
     if (isCollectingStardust) return
     
+    // Recalculate the target position right before spawning particles
+    stardustTargetRef.current = getStardustCounterPosition()
+    
     setIsCollectingStardust(true)
     const particles: Array<{ id: number; x: number; y: number; collected: boolean }> = []
     const particleCount = 15 // Spawn 15 particles for 30 stardust (2 each)
@@ -752,7 +827,7 @@ function TrueFalseLesson() {
             setTimeout(() => {
               addStardust(2) // Each particle is worth 2 stardust
               setEarnedStardust(prev => prev + 2)
-            }, 800) // 800ms matches the particle animation duration
+            }, 1200) // 1200ms matches the particle animation duration
           }
         } else {
           clearInterval(collectInterval)
@@ -760,7 +835,7 @@ function TrueFalseLesson() {
           setTimeout(() => {
             setStardustParticles([])
             setIsCollectingStardust(false)
-          }, 1000)
+          }, 2000)
         }
         
         return updated
@@ -842,9 +917,9 @@ function TrueFalseLesson() {
                   <Binary className="w-24 h-24 text-purple-400 mx-auto mb-6" />
                 </m.div>
                 <h1 className="text-5xl md:text-6xl font-light text-white mb-4">
-                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">TRUE</span>
+                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">ON</span>
                   <span className="mx-4 text-white/40">&</span>
-                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-pink-400">FALSE</span>
+                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-pink-400">OFF</span>
                 </h1>
                 <p className="text-xl text-white/60 font-light">The foundation of all digital logic</p>
               </div>
@@ -884,7 +959,7 @@ function TrueFalseLesson() {
                       <p className="text-gray-500 text-sm font-medium">ELECTRICITY OFF</p>
                     </div>
                   </div>
-                  <h3 className="text-xl font-medium text-white mb-1">FALSE State</h3>
+                  <h3 className="text-xl font-medium text-white mb-1">OFF State</h3>
                   <p className="text-white/40 text-sm">No current flowing</p>
                   <div className="mt-2 flex items-center justify-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-red-400/50" />
@@ -909,7 +984,7 @@ function TrueFalseLesson() {
                       <p className="text-green-400 text-sm font-medium">ELECTRICITY ON</p>
                     </div>
                   </div>
-                  <h3 className="text-xl font-medium text-white mb-1">TRUE State</h3>
+                  <h3 className="text-xl font-medium text-white mb-1">ON State</h3>
                   <p className="text-white/40 text-sm">Current is flowing</p>
                   <div className="mt-2 flex items-center justify-center gap-2">
                     <span className="text-green-400/60 text-xs">1 = ON</span>
@@ -933,14 +1008,14 @@ function TrueFalseLesson() {
                   {/* FALSE */}
                   <div className="bg-red-500/10 border border-red-400/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-red-400 font-semibold text-lg">FALSE</h3>
+                      <h3 className="text-red-400 font-semibold text-lg">OFF</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-red-900/20 rounded-lg p-2 text-center">
                         <span className="text-xl font-semibold text-red-300">0</span>
                       </div>
                       <div className="bg-red-900/20 rounded-lg p-2 text-center">
-                        <span className="text-lg font-medium text-red-300">OFF</span>
+                        <span className="text-lg font-medium text-red-300">FALSE</span>
                       </div>
                       <div className="bg-red-900/20 rounded-lg p-2 text-center">
                         <span className="text-lg font-medium text-red-300">NO</span>
@@ -953,14 +1028,14 @@ function TrueFalseLesson() {
                   {/* TRUE */}
                   <div className="bg-green-500/10 border border-green-400/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-green-400 font-semibold text-lg">TRUE</h3>
+                      <h3 className="text-green-400 font-semibold text-lg">ON</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-green-900/20 rounded-lg p-2 text-center">
                         <span className="text-xl font-semibold text-green-300">1</span>
                       </div>
                       <div className="bg-green-900/20 rounded-lg p-2 text-center">
-                        <span className="text-lg font-medium text-green-300">ON</span>
+                        <span className="text-lg font-medium text-green-300">TRUE</span>
                       </div>
                       <div className="bg-green-900/20 rounded-lg p-2 text-center">
                         <span className="text-lg font-medium text-green-300">YES</span>
@@ -1133,7 +1208,7 @@ function TrueFalseLesson() {
           return (
             <m.div
               key={particle.id}
-              className="fixed pointer-events-none z-[100]"
+              className="fixed pointer-events-none z-[9999]"
               initial={{ 
                 x: particle.x,
                 y: particle.y,
@@ -1141,10 +1216,10 @@ function TrueFalseLesson() {
                 opacity: 0
               }}
               animate={particle.collected ? {
-                x: targetX,
-                y: targetY,
-                scale: [1, 1.5],
-                opacity: [1, 1, 0]
+                x: targetX - 16, // Offset to center on the Star icon (half of w-8)
+                y: targetY - 16, // Offset to center on the Star icon (half of h-8)
+                scale: [1, 1.2, 0.8, 0.5],
+                opacity: [1, 1, 1, 0.8]
               } : {
                 x: particle.x,
                 y: particle.y,
@@ -1157,8 +1232,16 @@ function TrueFalseLesson() {
                 opacity: 0
               }}
               transition={particle.collected ? {
-                duration: 0.8,
-                ease: [0.4, 0, 0.2, 1]
+                duration: 1.2,
+                ease: [0.4, 0, 0.2, 1],
+                scale: {
+                  times: [0, 0.6, 0.9, 1],
+                  ease: "easeOut"
+                },
+                opacity: {
+                  times: [0, 0.7, 0.95, 1],
+                  ease: "easeOut"
+                }
               } : {
                 duration: 0.5,
                 scale: { type: "spring", stiffness: 260, damping: 20 },
@@ -1257,10 +1340,10 @@ function TrueFalseLesson() {
   )
 }
 
-export default function TrueFalsePage() {
+export default function OnOffPage() {
   return (
     <ProtectedRoute>
-      <TrueFalseLesson />
+      <OnOffLesson />
     </ProtectedRoute>
   )
 }

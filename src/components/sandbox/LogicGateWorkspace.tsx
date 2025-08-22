@@ -74,30 +74,36 @@ const MiniByteObjective = ({ objective, puzzleComplete }: { objective: string; p
   }, [objective])
   
   return (
-    <div className="flex items-center gap-3 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-full px-4 py-2 border border-purple-400/30 min-w-[260px] backdrop-blur-sm shadow-lg shadow-purple-500/10">
-      {/* Animated Byte Avatar with glow */}
+    <div className="flex items-center gap-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-2xl px-5 py-3 border-2 border-purple-400/40 min-w-[320px] backdrop-blur-md shadow-xl shadow-purple-500/20 relative overflow-hidden">
+      {/* Background shimmer effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/10 to-transparent -skew-x-12 animate-shimmer" 
+        style={{ animation: 'shimmer 3s linear infinite' }} />
+      
+      {/* Animated Byte Avatar with enhanced glow - Made bigger */}
       <div className="relative flex-shrink-0">
-        <div className="absolute inset-0 bg-purple-400/20 rounded-full blur-md animate-pulse" />
-        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 p-0.5">
-          <div className="w-full h-full bg-gray-900 rounded-full flex items-center justify-center relative">
-            {/* Binary matrix animation */}
-            <div className="grid grid-cols-2 gap-0">
+        <div className="absolute inset-0 bg-purple-400/30 rounded-full blur-lg animate-pulse scale-125" />
+        <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-purple-600 p-0.5 shadow-lg">
+          <div className="w-full h-full bg-gray-900 rounded-full flex items-center justify-center relative overflow-hidden">
+            {/* Inner glow */}
+            <div className="absolute inset-0 bg-gradient-to-t from-purple-600/20 to-transparent" />
+            {/* Binary matrix animation - Scaled up */}
+            <div className="grid grid-cols-2 gap-0.5">
               {binaryMatrix.map((bit, index) => (
                 <m.div
                   key={`${index}-${bit}`}
                   animate={{ 
-                    scale: isTyping ? [0.95, 1.05, 0.95] : 1,
-                    opacity: bit === '1' ? 1 : 0.6,
-                    color: bit === '1' ? '#c084fc' : '#9ca3af'
+                    scale: isTyping ? [0.9, 1.1, 0.9] : 1,
+                    opacity: bit === '1' ? 1 : 0.5,
+                    color: bit === '1' ? '#e9d5ff' : '#9ca3af'
                   }}
                   transition={{ 
-                    scale: isTyping ? { duration: 2, repeat: Infinity, delay: index * 0.1 } : { duration: 0.2 },
-                    opacity: { duration: 0.1 },
-                    color: { duration: 0.1 }
+                    scale: isTyping ? { duration: 2, repeat: Infinity, delay: index * 0.15 } : { duration: 0.2 },
+                    opacity: { duration: 0.15 },
+                    color: { duration: 0.15 }
                   }}
-                  className="text-[8px] font-mono font-bold w-3.5 h-3.5 flex items-center justify-center"
+                  className="text-[11px] font-mono font-bold w-5 h-5 flex items-center justify-center"
                   style={{
-                    textShadow: bit === '1' && isTyping ? '0 0 4px rgba(192, 132, 252, 0.5)' : 'none'
+                    textShadow: bit === '1' && isTyping ? '0 0 8px rgba(192, 132, 252, 0.8)' : 'none'
                   }}
                 >
                   {bit}
@@ -106,19 +112,26 @@ const MiniByteObjective = ({ objective, puzzleComplete }: { objective: string; p
             </div>
           </div>
         </div>
+        {/* Mini-Byte label */}
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-purple-600/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">
+          BYTE
+        </div>
       </div>
       
-      {/* Typing text with speech bubble feel */}
-      <div className="flex-1 flex items-center">
-        <span className={`text-sm font-medium ${
-          puzzleComplete ? 'text-green-400' : 'text-purple-200'
+      {/* Speech bubble arrow */}
+      <div className="absolute left-[60px] top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-purple-900/20" />
+      
+      {/* Typing text with enhanced speech bubble feel */}
+      <div className="flex-1 flex items-center relative z-10">
+        <span className={`text-base font-semibold tracking-wide ${
+          puzzleComplete ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'text-purple-100'
         }`}>
           {displayedText}
           {isTyping && (
             <m.span
               animate={{ opacity: [0, 1, 0] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-              className="text-purple-300 ml-0.5"
+              transition={{ duration: 0.6, repeat: Infinity }}
+              className="text-purple-300 ml-1 text-lg"
             >
               |
             </m.span>
@@ -272,9 +285,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [historyIndex, setHistoryIndex] = useState(-1)
   const MAX_HISTORY_SIZE = 50
   const [hasDragged, setHasDragged] = useState(false)
-  const [showTruthTable, setShowTruthTable] = useState(false)
-  const [truthTableScale, setTruthTableScale] = useState(1)
-  const [truthTablePos, setTruthTablePos] = useState({ x: 400, y: 200 })
+  const [showStateTable, setShowStateTable] = useState(false)
+  const [stateTableScale, setStateTableScale] = useState(1)
+  const [stateTablePos, setStateTablePos] = useState({ x: 400, y: 200 })
   const [isDraggingTable, setIsDraggingTable] = useState(false)
   const [tableDragStart, setTableDragStart] = useState({ x: 0, y: 0 })
   const [showEquation, setShowEquation] = useState(false)
@@ -1185,7 +1198,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (isDraggingTable) {
-        setTruthTablePos({
+        setStateTablePos({
           x: e.clientX - tableDragStart.x,
           y: e.clientY - tableDragStart.y
         })
@@ -1395,8 +1408,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     })
   }, [])
 
-  // Generate truth table for the current circuit
-  const generateTruthTable = useCallback(() => {
+  // Generate state table for the current circuit
+  const generateStateTable = useCallback(() => {
     // Find all switches (inputs) and outputs - sort by ID for stable ordering
     const switches = gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id))
     const outputs = gates.filter(g => g.type === 'OUTPUT').sort((a, b) => a.id.localeCompare(b.id))
@@ -1444,9 +1457,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     }
   }, [gates, connections, evaluateCircuit]);
   
-  // Memoize truth table to prevent recalculation on switch changes
-  const memoizedTruthTable = useMemo(() => {
-    return generateTruthTable()
+  // Memoize state table to prevent recalculation on switch changes
+  const memoizedStateTable = useMemo(() => {
+    return generateStateTable()
   }, [
     // Only depend on circuit structure, not gate states
     gates.map(g => `${g.id}-${g.type}-${g.x}-${g.y}`).sort().join(','),
@@ -1612,14 +1625,14 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     })
     
     if (equationFormat === 'SOP' || equationFormat === 'POS') {
-      // Generate from truth table for SOP/POS
-      const truthTable = generateTruthTable()
-      if (truthTable.rows.length === 0) return equations.join('\n')
+      // Generate from state table for SOP/POS
+      const stateTable = generateStateTable()
+      if (stateTable.rows.length === 0) return equations.join('\n')
       
       const sopTerms: string[][] = outputs.map(() => [])
       const posTerms: string[][] = outputs.map(() => [])
       
-      truthTable.rows.forEach(row => {
+      stateTable.rows.forEach(row => {
         const inputVars = row.inputs.map((val, i) => ({
           name: switches[i]?.label || String.fromCharCode(65 + i),
           value: val
@@ -1650,7 +1663,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     }
     
     return equations.join('\n')
-  }, [gates, connections, equationFormat, generateTruthTable])
+  }, [gates, connections, equationFormat, generateStateTable])
 
   // Parse equation and generate circuit
   // Validate equation syntax
@@ -2589,7 +2602,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-violet-400 rounded-full" />
                         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-violet-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-violet-400">=2</span>
+                          <span className="text-[8px] font-bold text-violet-400">∧</span>
                         </div>
                       </div>
                     </div>
@@ -2602,7 +2615,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-blue-400 rounded-full" />
                         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-blue-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-blue-400">≥1</span>
+                          <span className="text-[8px] font-bold text-blue-400">∨</span>
                         </div>
                       </div>
                     </div>
@@ -2613,7 +2626,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       <div className={`absolute inset-0 bg-gradient-to-br ${config.color} rounded-lg border ${config.borderColor}`}>
                         <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-rose-400 rounded-full" />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-rose-400">⇄</span>
+                          <span className="text-[10px] font-bold text-rose-400">¬</span>
                         </div>
                       </div>
                     </div>
@@ -2626,7 +2639,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-purple-400 rounded-full" />
                         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-purple-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-purple-400">=1</span>
+                          <span className="text-[8px] font-bold text-purple-400">⊕</span>
                         </div>
                       </div>
                     </div>
@@ -2638,7 +2651,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute left-0.5 top-2 w-0.5 h-0.5 bg-green-400 rounded-full" />
                         <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-green-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-green-400">≠2</span>
+                          <span className="text-[8px] font-bold text-green-400">↑</span>
                         </div>
                       </div>
                     </div>
@@ -2650,7 +2663,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute left-0.5 top-2 w-0.5 h-0.5 bg-orange-400 rounded-full" />
                         <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-orange-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-orange-400">=0</span>
+                          <span className="text-[8px] font-bold text-orange-400">↓</span>
                         </div>
                       </div>
                     </div>
@@ -2717,9 +2730,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           <div className="flex-1" />
           
           <button
-            onClick={() => setShowTruthTable(!showTruthTable)}
+            onClick={() => setShowStateTable(!showStateTable)}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
-              showTruthTable
+              showStateTable
                 ? 'bg-gradient-to-r from-cosmic-aurora/30 to-cosmic-starlight/30 border border-cosmic-aurora/50 text-cosmic-aurora shadow-lg shadow-cosmic-aurora/20'
                 : 'bg-white/5 border border-transparent text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
@@ -3187,12 +3200,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       <span className={`${
                         gate.output ? 'text-white/80' : 'text-white/60'
                       }`} style={{ fontSize: 10 * zoom + 'px', marginTop: 2 * zoom + 'px', fontWeight: 500 }}>
-                        {gate.type === 'AND' ? '=2' : 
-                         gate.type === 'OR' ? '≥1' : 
-                         gate.type === 'NOT' ? '⇄' : 
-                         gate.type === 'XOR' ? '=1' : 
-                         gate.type === 'NAND' ? '≠2' : 
-                         gate.type === 'NOR' ? '=0' : ''}
+                        {gate.type === 'AND' ? '∧' : 
+                         gate.type === 'OR' ? '∨' : 
+                         gate.type === 'NOT' ? '¬' : 
+                         gate.type === 'XOR' ? '⊕' : 
+                         gate.type === 'NAND' ? '↑' : 
+                         gate.type === 'NOR' ? '↓' : ''}
                       </span>
                     )}
                   </div>
@@ -3405,13 +3418,13 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         )}
       </div>
 
-      {showTruthTable && (
+      {showStateTable && (
         <div
           className="absolute z-30"
           style={{
-            left: truthTablePos.x,
-            top: truthTablePos.y,
-            transform: `scale(${truthTableScale})`,
+            left: stateTablePos.x,
+            top: stateTablePos.y,
+            transform: `scale(${stateTableScale})`,
             transformOrigin: 'top left'
           }}
         >
@@ -3421,21 +3434,21 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
               const rect = e.currentTarget.getBoundingClientRect()
               setIsDraggingTable(true)
               setTableDragStart({
-                x: e.clientX - truthTablePos.x,
-                y: e.clientY - truthTablePos.y
+                x: e.clientX - stateTablePos.x,
+                y: e.clientY - stateTablePos.y
               })
             }}
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10 cursor-move select-none">
               <h3 className="text-white font-semibold flex items-center gap-2">
                 <Table className="w-4 h-4" />
-                Truth Table
+                State Table
               </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setTruthTableScale(Math.max(0.5, truthTableScale - 0.1))
+                      setStateTableScale(Math.max(0.5, stateTableScale - 0.1))
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors px-2 py-1 hover:bg-white/10 rounded"
@@ -3443,12 +3456,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     <span className="text-xs font-bold">−</span>
                   </button>
                   <span className="text-white/60 text-xs min-w-[3rem] text-center select-none">
-                    {Math.round(truthTableScale * 100)}%
+                    {Math.round(stateTableScale * 100)}%
                   </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setTruthTableScale(Math.min(1.5, truthTableScale + 0.1))
+                      setStateTableScale(Math.min(1.5, stateTableScale + 0.1))
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors px-2 py-1 hover:bg-white/10 rounded"
@@ -3459,7 +3472,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      setShowTruthTable(false)
+                      setShowStateTable(false)
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     className="text-white/60 hover:text-white transition-colors p-1 hover:bg-white/10 rounded"
@@ -3471,19 +3484,19 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
               <div className="p-4">
               
               {(() => {
-                const truthTable = memoizedTruthTable
+                const stateTable = memoizedStateTable
                 
-                if (truthTable.inputs.length === 0 || truthTable.outputs.length === 0) {
+                if (stateTable.inputs.length === 0 || stateTable.outputs.length === 0) {
                   return (
                     <div className="text-white/60 text-sm text-center py-8">
-                      Add switches and outputs to see the truth table
+                      Add switches and outputs to see the state table
                     </div>
                   )
                 }
                 
                 // Current switch state for highlighting
                 const switches = gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id))
-                const currentStateIndex = truthTable.rows.findIndex(row => 
+                const currentStateIndex = stateTable.rows.findIndex(row => 
                   switches.every((sw, i) => sw.output === row.inputs[i])
                 )
                 
@@ -3499,13 +3512,13 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-white/10">
-                          {truthTable.inputs.map((input, i) => (
+                          {stateTable.inputs.map((input, i) => (
                             <th key={`input-${i}`} className="text-white/80 font-medium px-3 py-2 text-center">
                               {input}
                             </th>
                           ))}
                           <th className="w-px" />
-                          {truthTable.outputs.map((output, i) => (
+                          {stateTable.outputs.map((output, i) => (
                             <th key={`output-${i}`} className="text-white/80 font-medium px-3 py-2 text-center">
                               {output}
                             </th>
@@ -3513,7 +3526,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         </tr>
                       </thead>
                       <tbody>
-                        {truthTable.rows.map((row, rowIndex) => {
+                        {stateTable.rows.map((row, rowIndex) => {
                           // Check if this row matches current switch states
                           const switches = gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id))
                           const isCurrentState = switches.every((sw, i) => sw.output === row.inputs[i])
