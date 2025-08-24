@@ -29,7 +29,6 @@ interface Course {
   gradient: string
   glowColor: string
   totalLessons: number
-  completedLessons: number
   estimatedHours: number
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   status: 'locked' | 'available' | 'in-progress' | 'completed'
@@ -41,14 +40,13 @@ interface Course {
 const courses: Course[] = [
   {
     id: 'computer-science',
-    title: 'Computer Science Fundamentals',
+    title: 'Computer Science',
     subtitle: 'Master the art of computational thinking',
     description: 'Journey through binary logic, algorithms, and the architecture of digital systems. Learn to think like a computer scientist.',
     icon: Code2,
     gradient: 'from-violet-600 via-purple-600 to-indigo-600',
     glowColor: 'purple',
     totalLessons: 24,
-    completedLessons: 3,
     estimatedHours: 12,
     difficulty: 'Beginner',
     status: 'in-progress',
@@ -65,7 +63,6 @@ const courses: Course[] = [
     gradient: 'from-emerald-600 via-teal-600 to-cyan-600',
     glowColor: 'emerald',
     totalLessons: 16,
-    completedLessons: 16,
     estimatedHours: 8,
     difficulty: 'Beginner',
     status: 'completed',
@@ -81,7 +78,6 @@ const courses: Course[] = [
     gradient: 'from-amber-600 via-orange-600 to-red-600',
     glowColor: 'amber',
     totalLessons: 32,
-    completedLessons: 0,
     estimatedHours: 20,
     difficulty: 'Intermediate',
     status: 'available',
@@ -98,7 +94,6 @@ const courses: Course[] = [
     gradient: 'from-blue-600 via-cyan-600 to-sky-600',
     glowColor: 'blue',
     totalLessons: 28,
-    completedLessons: 0,
     estimatedHours: 18,
     difficulty: 'Advanced',
     status: 'locked',
@@ -122,9 +117,6 @@ function CoursesContent() {
     }, 300)
   }
 
-  const totalProgress = courses.reduce((acc, course) => acc + course.completedLessons, 0)
-  const totalLessons = courses.reduce((acc, course) => acc + course.totalLessons, 0)
-  const overallProgress = Math.round((totalProgress / totalLessons) * 100)
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -151,25 +143,6 @@ function CoursesContent() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <m.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.8, type: "spring" }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10 mb-6"
-          >
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="text-sm text-white/80">
-              {overallProgress}% Complete
-            </span>
-            <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
-              <m.div 
-                className="h-full bg-gradient-to-r from-purple-400 to-pink-400"
-                initial={{ width: 0 }}
-                animate={{ width: `${overallProgress}%` }}
-                transition={{ duration: 1, delay: 0.5 }}
-              />
-            </div>
-          </m.div>
 
           <h1 className="text-6xl md:text-7xl font-bold text-white mb-4">
             <span className="inline-block">
@@ -392,7 +365,7 @@ function CoursesContent() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm text-white/50">Progress</span>
                           <span className="text-sm text-white/70">
-                            {course.completedLessons} / {course.totalLessons} lessons
+                            {course.totalLessons} lessons
                           </span>
                         </div>
                         <div className="h-2 bg-white/10 rounded-full overflow-hidden">

@@ -1,16 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { m, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft,
   Code2,
   Lock,
-  CheckCircle,
   Circle,
-  Star,
-  Zap,
   Trophy,
   ChevronDown,
   Play,
@@ -23,8 +20,6 @@ import TopNavigationBar from '@/components/ui/TopNavigationBar'
 import CosmicBackground from '@/components/effects/CosmicBackground'
 import ClientOnly from '@/components/effects/ClientOnly'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
 
 interface Lesson {
   id: string
@@ -78,7 +73,7 @@ const modules: Module[] = [
         type: 'lesson'
       },
       {
-        id: 'wiring-gates',
+        id: 'wiring-and-gate',
         title: 'Puzzle: Wiring Gates',
         description: 'Interactive challenges with Byte guiding you',
         duration: '30 min',
@@ -96,8 +91,8 @@ const modules: Module[] = [
         type: 'lesson'
       },
       {
-        id: 'boolean-algebra',
-        title: 'Boolean Algebra',
+        id: 'binary-algebra',
+        title: 'Binary Algebra',
         description: 'Mathematical operations on logical values',
         duration: '30 min',
         xp: 250,
@@ -281,71 +276,8 @@ const modules: Module[] = [
 
 function ComputerScienceContent() {
   const router = useRouter()
-  const { user } = useAuth()
   const [expandedModules, setExpandedModules] = useState<string[]>(['binary-logic'])
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null)
-  const [completedLessons, setCompletedLessons] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-
-  // Fetch completed lessons from database
-  useEffect(() => {
-    async function fetchCompletedLessons() {
-      if (!user) {
-        console.log('No user, skipping fetch')
-        setLoading(false)
-        return
-      }
-      
-      try {
-        console.log('Fetching completed lessons for user:', user.id)
-        
-        const { data, error } = await supabase
-          .from('lesson_completions')
-          .select('lesson_id')
-          .eq('user_id', user.id)
-        
-        console.log('Fetch result:', { data, error })
-        
-        if (error) {
-          console.error('Error fetching completed lessons:', error)
-          // Check if table doesn't exist
-          if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
-            console.error('lesson_completions table not found. Please run FIX_LESSON_COMPLETIONS.sql in Supabase')
-          }
-        } else if (data) {
-          const lessonIds = data.map(item => item.lesson_id)
-          console.log('Completed lesson IDs:', lessonIds)
-          setCompletedLessons(lessonIds)
-        } else {
-          console.log('No data returned')
-          setCompletedLessons([])
-        }
-      } catch (err) {
-        console.error('Error fetching completed lessons:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchCompletedLessons()
-  }, [user])
-
-  // Process modules with actual completion status
-  const processedModules = modules.map(module => {
-    const updatedLessons = module.lessons.map(lesson => ({
-      ...lesson,
-      status: completedLessons.includes(lesson.id) ? 'completed' as const : 'available' as const
-    }))
-    
-    const completedCount = updatedLessons.filter(l => l.status === 'completed').length
-    
-    return {
-      ...module,
-      lessons: updatedLessons,
-      completedLessons: completedCount,
-      progress: Math.round((completedCount / module.totalLessons) * 100)
-    }
-  })
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev => 
@@ -360,17 +292,15 @@ function ComputerScienceContent() {
     
     setSelectedLesson(lesson.id)
     setTimeout(() => {
-      router.push(`/courses/computer-science/${moduleId}/${lesson.id}`)
+      // Special routing for binary-logic lessons
+      if (lesson.id === 'on-off' || lesson.id === 'gates-and-tables-1' || lesson.id === 'wiring-and-gate' || lesson.id === 'gates-and-tables-2' || lesson.id === 'binary-algebra') {
+        router.push(`/binary-logic/${lesson.id}`)
+      } else {
+        router.push(`/courses/computer-science/${moduleId}/${lesson.id}`)
+      }
     }, 300)
   }
 
-  const totalXP = processedModules.reduce((acc, module) => 
-    acc + module.lessons.filter(l => l.status === 'completed').reduce((sum, l) => sum + l.xp, 0), 0
-  )
-
-  const totalProgress = processedModules.reduce((acc, module) => acc + module.completedLessons, 0)
-  const totalLessons = processedModules.reduce((acc, module) => acc + module.totalLessons, 0)
-  const overallProgress = Math.round((totalProgress / totalLessons) * 100)
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -418,41 +348,12 @@ function ComputerScienceContent() {
 
             <div className="flex-1">
               <h1 className="text-4xl font-bold text-white mb-2">
-                Computer Science Fundamentals
+                Computer Science
               </h1>
               <p className="text-white/60 text-lg">
                 Master the art of computational thinking
               </p>
             </div>
-          </div>
-        </m.div>
-
-        {/* Stats Bar */}
-        <m.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-4 gap-4 mb-8"
-        >
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4">
-            <Trophy className="w-5 h-5 text-yellow-400 mb-2" />
-            <div className="text-2xl font-bold text-white">{totalXP}</div>
-            <div className="text-xs text-white/50">Total XP</div>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4">
-            <Zap className="w-5 h-5 text-orange-400 mb-2" />
-            <div className="text-2xl font-bold text-white">7</div>
-            <div className="text-xs text-white/50">Day Streak</div>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4">
-            <Star className="w-5 h-5 text-purple-400 mb-2" />
-            <div className="text-2xl font-bold text-white">{totalProgress}/{totalLessons}</div>
-            <div className="text-xs text-white/50">Lessons</div>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4">
-            <Target className="w-5 h-5 text-green-400 mb-2" />
-            <div className="text-2xl font-bold text-white">{overallProgress}%</div>
-            <div className="text-xs text-white/50">Complete</div>
           </div>
         </m.div>
 
@@ -463,7 +364,7 @@ function ComputerScienceContent() {
 
           {/* Modules */}
           <div className="space-y-8">
-            {processedModules.map((module, moduleIndex) => (
+            {modules.map((module, moduleIndex) => (
               <m.div
                 key={module.id}
                 initial={{ opacity: 0, x: moduleIndex % 2 === 0 ? -50 : 50 }}
@@ -473,11 +374,7 @@ function ComputerScienceContent() {
               >
                 {/* Module Card */}
                 <div
-                  className={`relative bg-black/40 backdrop-blur-xl rounded-3xl border ${
-                    module.completedLessons > 0 
-                      ? 'border-white/20' 
-                      : 'border-white/10'
-                  } overflow-hidden`}
+                  className="relative bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden"
                 >
 
                   {/* Module Header */}
@@ -494,28 +391,12 @@ function ComputerScienceContent() {
                           module.color === 'green' ? 'bg-green-500/20 border-2 border-green-500/40' :
                           'bg-orange-500/20 border-2 border-orange-500/40'
                         }`}>
-                          {module.completedLessons === module.totalLessons ? (
-                            <CheckCircle className={`w-8 h-8 ${
-                              module.color === 'purple' ? 'text-purple-400' :
-                              module.color === 'blue' ? 'text-blue-400' :
-                              module.color === 'green' ? 'text-green-400' :
-                              'text-orange-400'
-                            }`} />
-                          ) : module.completedLessons > 0 ? (
-                            <div className="relative">
-                              <Circle className={`w-8 h-8 ${
-                                module.color === 'purple' ? 'text-purple-400' :
-                                module.color === 'blue' ? 'text-blue-400' :
-                                module.color === 'green' ? 'text-green-400' :
-                                'text-orange-400'
-                              }`} />
-                              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
-                                {module.completedLessons}
-                              </span>
-                            </div>
-                          ) : (
-                            <Circle className="w-8 h-8 text-white/40" />
-                          )}
+                          <Circle className={`w-8 h-8 ${
+                            module.color === 'purple' ? 'text-purple-400' :
+                            module.color === 'blue' ? 'text-blue-400' :
+                            module.color === 'green' ? 'text-green-400' :
+                            'text-orange-400'
+                          }`} />
                         </div>
 
                         <div>
@@ -526,8 +407,7 @@ function ComputerScienceContent() {
                             {module.description}
                           </p>
                           <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                            <span>{module.completedLessons}/{module.totalLessons} lessons</span>
-                            <span>{module.progress}% complete</span>
+                            <span>{module.totalLessons} lessons</span>
                           </div>
                         </div>
                       </div>
@@ -540,20 +420,6 @@ function ComputerScienceContent() {
                       </m.div>
                     </div>
 
-                    {/* Module Progress Bar */}
-                    <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
-                      <m.div
-                        className={`h-full ${
-                          module.color === 'purple' ? 'bg-gradient-to-r from-purple-400 to-purple-500' :
-                          module.color === 'blue' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                          module.color === 'green' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                          'bg-gradient-to-r from-orange-400 to-orange-500'
-                        }`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${module.progress}%` }}
-                        transition={{ duration: 1, delay: 0.5 + moduleIndex * 0.1 }}
-                      />
-                    </div>
                   </button>
 
                   {/* Lessons */}
@@ -578,10 +444,6 @@ function ComputerScienceContent() {
                               className={`w-full p-4 rounded-2xl border transition-all ${
                                 lesson.status === 'locked'
                                   ? 'bg-white/5 border-white/5 opacity-50 cursor-not-allowed'
-                                  : lesson.status === 'completed'
-                                  ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
-                                  : lesson.status === 'in-progress'
-                                  ? 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20'
                                   : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                               }`}
                             >
@@ -589,17 +451,11 @@ function ComputerScienceContent() {
                                 <div className="flex items-center gap-4">
                                   {/* Lesson Icon */}
                                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                    lesson.status === 'completed'
-                                      ? 'bg-green-500/20'
-                                      : lesson.status === 'in-progress'
-                                      ? 'bg-purple-500/20'
-                                      : lesson.status === 'available'
+                                    lesson.status === 'available'
                                       ? 'bg-white/10'
                                       : 'bg-white/5'
                                   }`}>
-                                    {lesson.status === 'completed' ? (
-                                      <CheckCircle className="w-6 h-6 text-green-400" />
-                                    ) : lesson.status === 'locked' ? (
+                                    {lesson.status === 'locked' ? (
                                       <Lock className="w-6 h-6 text-white/30" />
                                     ) : lesson.type === 'challenge' ? (
                                       <Trophy className="w-6 h-6 text-yellow-400" />
@@ -649,19 +505,7 @@ function ComputerScienceContent() {
 
                 {/* Connection Node */}
                 <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 w-8 h-8 bg-black rounded-full border-2 border-white/20 flex items-center justify-center">
-                  <div className={`w-4 h-4 rounded-full ${
-                    module.completedLessons === module.totalLessons
-                      ? (module.color === 'purple' ? 'bg-purple-400' :
-                         module.color === 'blue' ? 'bg-blue-400' :
-                         module.color === 'green' ? 'bg-green-400' :
-                         'bg-orange-400')
-                      : module.completedLessons > 0
-                      ? (module.color === 'purple' ? 'bg-purple-400/50' :
-                         module.color === 'blue' ? 'bg-blue-400/50' :
-                         module.color === 'green' ? 'bg-green-400/50' :
-                         'bg-orange-400/50')
-                      : 'bg-white/20'
-                  }`} />
+                  <div className="w-4 h-4 rounded-full bg-white/20" />
                 </div>
               </m.div>
             ))}

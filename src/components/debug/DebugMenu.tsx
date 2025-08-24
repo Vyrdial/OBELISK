@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
-import { X, Crown, Sparkles, Bug, RefreshCw, Settings, User, Database, BookOpen, RotateCcw } from 'lucide-react'
+import { X, Crown, Sparkles, Bug, RefreshCw, Settings, User, Database, Star, Wand2 } from 'lucide-react'
 import { useProfile } from '@/hooks/useProfile'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { useStardustAnimation } from '@/contexts/StardustAnimationContext'
 
 export default function DebugMenu() {
   const [isOpen, setIsOpen] = useState(false)
@@ -16,8 +17,10 @@ export default function DebugMenu() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [customStardust, setCustomStardust] = useState('')
   const [targetUsername, setTargetUsername] = useState('')
-  const [lessonResetUsername, setLessonResetUsername] = useState('')
-  const [lessonStats, setLessonStats] = useState<any>(null)
+  const [stardustParticles, setStardustParticles] = useState<Array<{ id: number; x: number; y: number; collected: boolean; value: number; size: 'small' | 'medium' | 'large' | 'huge' }>>([])
+  const [isCollectingStardust, setIsCollectingStardust] = useState(false)
+  const [animatingStardust, setAnimatingStardust] = useState(0) // Track stardust being animated
+  const { displayStardust, setDisplayStardust } = useStardustAnimation() // Use global context
 
   useEffect(() => {
     if (profile) {
@@ -103,10 +106,20 @@ export default function DebugMenu() {
       
       if (!error) {
         if (targetUserId === user?.id) {
-          setStardust(newAmount)
+          // Only trigger animation for self
+          if (amount > 0) {
+            // Update the real value immediately but let animation handle display
+            setStardust(newAmount)
+            spawnDynamicStardust(amount)
+          } else if (amount < 0) {
+            // For negative amounts, just update immediately
+            setStardust(newAmount)
+            setDisplayStardust(newAmount)
+          }
           await refreshProfile()
+        } else {
+          alert(`Successfully ${amount >= 0 ? 'added' : 'removed'} ${Math.abs(amount)} stardust ${username ? `to/from ${username}` : ''}`)
         }
-        alert(`Successfully ${amount >= 0 ? 'added' : 'removed'} ${Math.abs(amount)} stardust ${username ? `to/from ${username}` : ''}`)
       } else {
         console.error('Supabase error:', error)
         alert('Failed to update stardust')
@@ -119,25 +132,6 @@ export default function DebugMenu() {
     }
   }
 
-  const resetNameChanges = async () => {
-    if (!user?.id) return
-    
-    setIsUpdating(true)
-    try {
-      // Delete all name change records for this user
-      await supabase
-        .from('display_name_changes')
-        .delete()
-        .eq('user_id', user.id)
-      
-      alert('Name change limit reset!')
-      await refreshProfile()
-    } catch (error) {
-      console.error('Error resetting name changes:', error)
-    } finally {
-      setIsUpdating(false)
-    }
-  }
 
   const clearLocalStorage = () => {
     localStorage.clear()
@@ -157,118 +151,334 @@ export default function DebugMenu() {
     }
   }
 
-  const getLessonStats = async (username?: string) => {
-    try {
-      console.log('Getting lesson stats for:', username || 'current user')
-      
-      // Call with proper parameters based on whether username is provided
-      const params = username ? { p_username: username } : {}
-      const { data, error } = await supabase
-        .rpc('get_lesson_stats', params)
-      
-      console.log('Stats response:', { data, error })
-      
-      if (error) {
-        console.error('Error getting lesson stats:', error)
-        
-        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
-          alert('Lesson completion system not set up. Please run the FIX_LESSON_COMPLETIONS.sql script in Supabase.')
-        } else {
-          alert(`Failed to get lesson stats: ${error.message}`)
-        }
-        return
-      }
-      
-      // Handle the response - it might be wrapped in an array
-      const result = Array.isArray(data) ? data[0] : data
-      
-      if (!result?.success) {
-        alert(result?.error || 'Failed to get stats')
-        return
-      }
-      
-      setLessonStats(result)
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Error getting lesson stats')
+  // Dynamic stardust spawning based on amount
+  const spawnDynamicStardust = (amount: number) => {
+    // Close menu for better visibility
+    setIsOpen(false)
+    
+    // Calculate particle distribution - always make it feel rewarding
+    const particles: Array<{ id: number; x: number; y: number; collected: boolean; value: number; size: 'small' | 'medium' | 'large' | 'huge' }> = []
+    const timestamp = Date.now()
+    
+    // Break down into particles that always feel abundant
+    // BUT cap at 15 particles max to prevent lag
+    const MAX_PARTICLES = 15
+    let particleCount = 0
+    let remaining = amount
+    
+    // Smart particle distribution - fewer particles for larger amounts
+    const getParticleValue = (remaining: number, particlesLeft: number) => {
+      const avgPerParticle = Math.ceil(remaining / particlesLeft)
+      // Round to nice numbers
+      if (avgPerParticle >= 100000) return 100000
+      if (avgPerParticle >= 50000) return 50000
+      if (avgPerParticle >= 10000) return 10000
+      if (avgPerParticle >= 5000) return 5000
+      if (avgPerParticle >= 1000) return 1000
+      if (avgPerParticle >= 500) return 500
+      if (avgPerParticle >= 100) return 100
+      if (avgPerParticle >= 50) return 50
+      if (avgPerParticle >= 25) return 25
+      if (avgPerParticle >= 10) return 10
+      if (avgPerParticle >= 5) return 5
+      return 1
     }
+    
+    // Smart particle distribution with cap
+    while (remaining > 0 && particleCount < MAX_PARTICLES) {
+      const particlesLeft = MAX_PARTICLES - particleCount
+      const value = getParticleValue(remaining, particlesLeft)
+      
+      // Determine size based on value
+      let size: 'small' | 'medium' | 'large' | 'huge'
+      if (value >= 10000) size = 'huge'
+      else if (value >= 100) size = 'large'
+      else if (value >= 10) size = 'medium'
+      else size = 'small'
+      
+      particles.push({ 
+        id: timestamp + particleCount++, 
+        x: 0, 
+        y: 0, 
+        collected: false, 
+        value: Math.min(value, remaining), 
+        size 
+      })
+      
+      remaining -= value
+    }
+    
+    // If we still have remaining value (shouldn't happen often), add it to the last particle
+    if (remaining > 0 && particles.length > 0) {
+      particles[particles.length - 1].value += remaining
+    }
+    
+    // For small amounts, ensure we have at least 10 visual particles
+    if (amount < 10) {
+      while (particles.length < 10) {
+        particles.push({ 
+          id: timestamp + particleCount++, 
+          x: 0, 
+          y: 0, 
+          collected: false, 
+          value: 0, 
+          size: 'small' 
+        })
+      }
+    }
+    
+    // Now assign positions to all particles
+    particles.forEach((particle, index) => {
+      const spawnPattern = Math.random()
+      let x: number, y: number
+      
+      // Define safe spawn zone (avoiding borders and center)
+      const borderMargin = 100
+      const centerDeadZone = 150
+      
+      if (spawnPattern < 0.4) {
+        // Ring pattern around center but not too close to edges
+        const angle = (index / particles.length) * Math.PI * 2 + Math.random() * 0.5
+        const radius = 200 + Math.random() * 150 // Controlled radius
+        x = window.innerWidth / 2 + Math.cos(angle) * radius
+        y = window.innerHeight / 2 + Math.sin(angle) * radius
+        
+        // Clamp to safe zone
+        x = Math.max(borderMargin, Math.min(window.innerWidth - borderMargin, x))
+        y = Math.max(borderMargin, Math.min(window.innerHeight - borderMargin, y))
+      } else if (spawnPattern < 0.7) {
+        // Scattered in quadrants (avoiding center and edges)
+        const quadrant = Math.floor(Math.random() * 4)
+        const halfWidth = window.innerWidth / 2
+        const halfHeight = window.innerHeight / 2
+        
+        switch(quadrant) {
+          case 0: // Top-left
+            x = borderMargin + Math.random() * (halfWidth - centerDeadZone - borderMargin)
+            y = borderMargin + Math.random() * (halfHeight - centerDeadZone - borderMargin)
+            break
+          case 1: // Top-right
+            x = halfWidth + centerDeadZone + Math.random() * (halfWidth - centerDeadZone - borderMargin)
+            y = borderMargin + Math.random() * (halfHeight - centerDeadZone - borderMargin)
+            break
+          case 2: // Bottom-left
+            x = borderMargin + Math.random() * (halfWidth - centerDeadZone - borderMargin)
+            y = halfHeight + centerDeadZone + Math.random() * (halfHeight - centerDeadZone - borderMargin)
+            break
+          default: // Bottom-right
+            x = halfWidth + centerDeadZone + Math.random() * (halfWidth - centerDeadZone - borderMargin)
+            y = halfHeight + centerDeadZone + Math.random() * (halfHeight - centerDeadZone - borderMargin)
+        }
+      } else {
+        // Random position avoiding center and borders
+        do {
+          x = borderMargin + Math.random() * (window.innerWidth - 2 * borderMargin)
+          y = borderMargin + Math.random() * (window.innerHeight - 2 * borderMargin)
+        } while (
+          Math.abs(x - window.innerWidth / 2) < centerDeadZone && 
+          Math.abs(y - window.innerHeight / 2) < centerDeadZone
+        )
+      }
+      
+      particle.x = x
+      particle.y = y
+    })
+    
+    setStardustParticles(prev => [...prev, ...particles])
+    setAnimatingStardust(prev => prev + amount)
+    
+    // Start collecting with staggered delays
+    setTimeout(() => {
+      collectDynamicParticles(particles)
+    }, 500)
+  }
+  
+  // Legacy animation for demo button
+  const spawnStardustParticles = () => {
+    if (isCollectingStardust) return
+    
+    // Close the debug menu to show the animation
+    setIsOpen(false)
+    
+    setIsCollectingStardust(true)
+    const particles: Array<{ id: number; x: number; y: number; collected: boolean; value: number; size: 'small' | 'medium' | 'large' | 'huge' }> = []
+    const particleCount = 20
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2
+      const radius = 150 + Math.random() * 100
+      const centerX = window.innerWidth / 2
+      const centerY = window.innerHeight / 2
+      
+      particles.push({
+        id: Date.now() + i,
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+        collected: false,
+        value: 1,
+        size: 'small'
+      })
+    }
+    
+    setStardustParticles(particles)
+    
+    // Start collecting after a delay
+    setTimeout(() => {
+      collectStardustParticles(particles)
+    }, 800)
+  }
+  
+  const collectDynamicParticles = (newParticles: Array<{ id: number; x: number; y: number; collected: boolean; value: number; size: string }>) => {
+    const particleIds = newParticles.map(p => p.id)
+    let collectedCount = 0
+    
+    // Start a running counter animation immediately
+    const totalValue = newParticles.reduce((sum, p) => sum + p.value, 0)
+    const startValue = displayStardust
+    const endValue = startValue + totalValue
+    
+    // Calculate realistic timing based on actual particle collection
+    const particleCount = newParticles.length
+    const particleTravelTime = 800 // From the transition duration in particle animation
+    
+    // Calculate total collection time based on actual delays
+    let totalDelay = 0
+    newParticles.forEach(p => {
+      const delay = p.size === 'huge' ? 200 : 
+                   p.size === 'large' ? 150 :
+                   p.size === 'medium' ? 100 : 50
+      totalDelay += delay
+    })
+    
+    // Total time = travel time + all stagger delays + buffer
+    const totalCollectionTime = particleTravelTime + totalDelay + 300 // 300ms buffer
+    
+    // Counter should finish just after the last particle arrives
+    const animationDuration = Math.min(6000, totalCollectionTime)
+    const animationStartTime = Date.now()
+    let animationFrame: number
+    
+    // Running counter that processes the total value
+    const animateRunningCounter = () => {
+      const elapsed = Date.now() - animationStartTime
+      const progress = Math.min(elapsed / animationDuration, 1)
+      
+      // Use a smoother easing that slows down more at the end
+      // This is a cubic ease-out function for smoother deceleration
+      const eased = 1 - Math.pow(1 - progress, 3)
+      
+      const currentValue = Math.floor(startValue + (totalValue * eased))
+      
+      // Reduce jitter as we approach the end to prevent tweaking
+      let displayValue = currentValue
+      if (progress < 0.75) {
+        // Only add jitter in the first 75% of the animation
+        const jitterScale = 1 - (progress / 0.75) // Reduce jitter gradually
+        const maxJitter = Math.floor(3 * jitterScale)
+        const jitter = Math.random() < 0.3 ? Math.floor(Math.random() * maxJitter) : 0
+        displayValue = currentValue + jitter
+      }
+      
+      setDisplayStardust(displayValue)
+      
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animateRunningCounter)
+      } else {
+        // Ensure we end on the exact value
+        setDisplayStardust(endValue)
+        setStardust(endValue)
+      }
+    }
+    
+    // Start the counter animation
+    animateRunningCounter()
+    
+    const collectNext = () => {
+      if (collectedCount < newParticles.length) {
+        const currentParticle = newParticles[collectedCount]
+        
+        // Mark particle as collected
+        setStardustParticles(prev => prev.map(p => {
+          if (p.id === currentParticle.id) {
+            return { ...p, collected: true }
+          }
+          return p
+        }))
+        
+        collectedCount++
+        
+        // Stagger collection based on particle size
+        const delay = currentParticle.size === 'huge' ? 200 : 
+                     currentParticle.size === 'large' ? 150 :
+                     currentParticle.size === 'medium' ? 100 : 50
+        setTimeout(collectNext, delay)
+      } else {
+        // Clean up collected particles after animation
+        setTimeout(() => {
+          setStardustParticles(prev => prev.filter(p => !particleIds.includes(p.id)))
+          setAnimatingStardust(prev => Math.max(0, prev - totalValue))
+          // Ensure we're at the final value
+          cancelAnimationFrame(animationFrame)
+          setDisplayStardust(endValue)
+          setStardust(endValue)
+        }, 1000)
+      }
+    }
+    
+    collectNext()
+  }
+  
+  const collectStardustParticles = (particles: Array<{ id: number; x: number; y: number; collected: boolean; value: number; size: string }>) => {
+    const collectionDelay = 50
+    let collectedCount = 0
+    
+    const collectNext = () => {
+      if (collectedCount < particles.length) {
+        setStardustParticles(prev => prev.map((p, index) => {
+          if (index === collectedCount) {
+            return { ...p, collected: true }
+          }
+          return p
+        }))
+        collectedCount++
+        setTimeout(collectNext, collectionDelay)
+      } else {
+        // Clear particles after all are collected
+        setTimeout(() => {
+          setStardustParticles([])
+          setIsCollectingStardust(false)
+        }, 1000)
+      }
+    }
+    
+    collectNext()
   }
 
-  const resetLessons = async (username?: string) => {
-    const confirmMsg = username 
-      ? `Are you sure you want to reset all lesson completions for user "${username}"? This will also remove any stardust they earned from lessons.`
-      : 'Are you sure you want to reset all your lesson completions? This will also remove any stardust you earned from lessons.'
-    
-    if (!confirm(confirmMsg)) return
-    
-    setIsUpdating(true)
-    try {
-      console.log('Resetting lessons for:', username || 'current user')
-      
-      // Call the RPC with proper parameters
-      const { data, error } = await supabase
-        .rpc('reset_lesson_completions', username ? { p_username: username } : {})
-      
-      console.log('Reset response:', { data, error })
-      
-      if (error) {
-        console.error('Error resetting lessons:', error)
-        
-        // Check if it's a function not found error
-        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
-          alert('Lesson completion system not set up. Please run the FIX_LESSON_COMPLETIONS.sql script in Supabase.')
-        } else {
-          alert(`Failed to reset lessons: ${error.message}`)
-        }
-        return
-      }
-      
-      // Handle the response - it might be wrapped in an array
-      const result = Array.isArray(data) ? data[0] : data
-      
-      if (!result?.success) {
-        alert(result?.error || 'Failed to reset lessons')
-        return
-      }
-      
-      alert(`Successfully reset ${result.lessons_reset} lessons for ${result.username}. Removed ${result.stardust_removed} stardust.`)
-      
-      // Clear stats
-      setLessonStats(null)
-      
-      // Refresh profile if it was the current user
-      if (!username || username === profile?.username) {
-        await refreshProfile()
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Error resetting lessons')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
 
-  if (!isOpen) return null
+
+  if (!isOpen && stardustParticles.length === 0) return null
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] pointer-events-none">
-        {/* Backdrop */}
-        <m.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
-          onClick={() => setIsOpen(false)}
-        />
-        
-        {/* Debug Panel */}
-        <m.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="absolute top-20 left-1/2 -translate-x-1/2 w-[450px] max-h-[80vh] overflow-y-auto glass-morphism border border-cyan-500/30 rounded-2xl shadow-2xl pointer-events-auto"
-        >
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm"
+              onClick={() => setIsOpen(false)}
+            />
+            
+            {/* Debug Panel */}
+            <m.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-20 left-1/2 -translate-x-1/2 w-[450px] max-h-[80vh] overflow-y-auto glass-morphism border border-cyan-500/30 rounded-2xl shadow-2xl z-[9999]"
+            >
           {/* Header */}
           <div className="bg-cyan-900/50 border-b border-cyan-500/30 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -309,7 +519,7 @@ export default function DebugMenu() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60">Stardust:</span>
-                  <span className="text-yellow-300 font-mono">{stardust.toLocaleString()}</span>
+                  <span className="text-yellow-300 font-mono">{displayStardust.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -413,76 +623,6 @@ export default function DebugMenu() {
               </div>
             </div>
             
-            {/* Lesson Completions Management */}
-            <div className="bg-black/30 rounded-lg p-4 border border-purple-500/20">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-4 h-4 text-purple-400" />
-                <span className="text-white font-medium">Lesson Completions</span>
-              </div>
-              
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Username (leave empty for self)"
-                  value={lessonResetUsername}
-                  onChange={(e) => setLessonResetUsername(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 text-sm focus:outline-none focus:border-purple-500/50"
-                />
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => getLessonStats(lessonResetUsername || undefined)}
-                    disabled={isUpdating}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded text-purple-400 text-sm transition-colors disabled:opacity-50"
-                  >
-                    <Database className="w-3 h-3" />
-                    View Stats
-                  </button>
-                  
-                  <button
-                    onClick={() => resetLessons(lessonResetUsername || undefined)}
-                    disabled={isUpdating}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 rounded text-red-400 text-sm transition-colors disabled:opacity-50"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Reset Lessons
-                  </button>
-                </div>
-                
-                {/* Show lesson stats if available */}
-                {lessonStats && (
-                  <div className="mt-3 p-3 bg-black/40 rounded border border-purple-500/10">
-                    <div className="text-xs space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-white/50">User:</span>
-                        <span className="text-purple-400">{lessonStats.username}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/50">Lessons Completed:</span>
-                        <span className="text-white">{lessonStats.total_lessons_completed}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/50">Stardust Earned:</span>
-                        <span className="text-yellow-400">{lessonStats.total_stardust_earned}</span>
-                      </div>
-                      {lessonStats.lessons && lessonStats.lessons.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-purple-500/20">
-                          <div className="text-white/50 mb-1">Completed Lessons:</div>
-                          <div className="space-y-0.5 max-h-20 overflow-y-auto">
-                            {lessonStats.lessons.map((lesson: any, idx: number) => (
-                              <div key={idx} className="text-xs text-purple-300">
-                                • {lesson.lesson_id} (+{lesson.stardust_earned}⭐)
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
             {/* Developer Actions */}
             <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/20">
               <div className="flex items-center gap-2 mb-3">
@@ -491,15 +631,6 @@ export default function DebugMenu() {
               </div>
               
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={resetNameChanges}
-                  disabled={isUpdating}
-                  className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded text-blue-400 text-sm transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isUpdating ? 'animate-spin' : ''}`} />
-                  Reset Names
-                </button>
-                
                 <button
                   onClick={refreshProfileData}
                   disabled={isUpdating}
@@ -521,6 +652,15 @@ export default function DebugMenu() {
                   className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded text-purple-400 text-sm transition-colors"
                 >
                   Reload Page
+                </button>
+                
+                <button
+                  onClick={spawnStardustParticles}
+                  disabled={isCollectingStardust}
+                  className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 rounded text-yellow-400 text-sm transition-colors disabled:opacity-50"
+                >
+                  <Wand2 className="w-3 h-3" />
+                  Trigger Stardust Animation
                 </button>
               </div>
             </div>
@@ -552,7 +692,175 @@ export default function DebugMenu() {
             </p>
           </div>
         </m.div>
-      </div>
-    </AnimatePresence>
+          </>
+        )}
+      </AnimatePresence>
+      
+      {/* Stardust Particles Animation */}
+      <AnimatePresence>
+        {stardustParticles.map((particle) => {
+          // Find the stardust icon in the navigation bar
+          const stardustIcon = typeof window !== 'undefined' 
+            ? document.querySelector('[data-stardust-target="true"]')
+            : null
+          const rect = stardustIcon?.getBoundingClientRect()
+          const targetX = rect ? rect.left + rect.width / 2 : 100
+          const targetY = rect ? rect.top + rect.height / 2 : 30
+          
+          // Size configurations based on particle value
+          const sizeConfig = {
+            small: { 
+              star: 'w-6 h-6', 
+              glow: 'w-8 h-8', 
+              scale: 1, 
+              sparkles: 3, 
+              color: 'gold',
+              glowIntensity: 0.4
+            },
+            medium: { 
+              star: 'w-10 h-10', 
+              glow: 'w-14 h-14', 
+              scale: 1.3, 
+              sparkles: 5, 
+              color: 'sunset',
+              glowIntensity: 0.5
+            },
+            large: { 
+              star: 'w-14 h-14', 
+              glow: 'w-20 h-20', 
+              scale: 1.6, 
+              sparkles: 7, 
+              color: 'cosmic',
+              glowIntensity: 0.6
+            },
+            huge: { 
+              star: 'w-20 h-20', 
+              glow: 'w-28 h-28', 
+              scale: 2, 
+              sparkles: 10, 
+              color: 'aurora',
+              glowIntensity: 0.7
+            }
+          }
+          
+          const config = sizeConfig[particle.size]
+          const colorMap = {
+            gold: {
+              primary: 'rgb(251, 191, 36)', // Warm gold
+              secondary: 'rgb(252, 211, 77)', // Bright gold
+              glow: 'rgba(251, 191, 36, '
+            },
+            sunset: {
+              primary: 'rgb(251, 146, 60)', // Orange
+              secondary: 'rgb(254, 215, 170)', // Peach
+              glow: 'rgba(251, 146, 60, '
+            },
+            cosmic: {
+              primary: 'rgb(167, 139, 250)', // Purple
+              secondary: 'rgb(196, 181, 253)', // Light purple
+              glow: 'rgba(167, 139, 250, '
+            },
+            aurora: {
+              primary: 'rgb(52, 211, 153)', // Emerald
+              secondary: 'rgb(110, 231, 183)', // Light emerald
+              glow: 'rgba(52, 211, 153, '
+            }
+          }
+          const colors = colorMap[config.color]
+          
+          return (
+            <m.div
+              key={particle.id}
+              className="fixed pointer-events-none z-[10000]"
+              style={{
+                left: particle.x,
+                top: particle.y
+              }}
+              initial={{ 
+                scale: 0,
+                opacity: 0
+              }}
+              animate={particle.collected ? {
+                x: targetX - particle.x,
+                y: targetY - particle.y,
+                scale: [config.scale, config.scale * 1.5],
+                opacity: [1, 1, 0]
+              } : {
+                scale: [0, config.scale],
+                opacity: 1,
+                rotate: [0, 360]
+              }}
+              exit={{ 
+                scale: 0,
+                opacity: 0
+              }}
+              transition={particle.collected ? {
+                duration: 0.8,
+                ease: [0.4, 0, 0.2, 1]
+              } : {
+                duration: 0.5,
+                scale: { type: "spring", stiffness: 260, damping: 20 },
+                rotate: { duration: 2, repeat: Infinity, ease: "linear" }
+              }}
+            >
+              <div className="relative flex items-center justify-center">
+                {/* Multiple glow layers for intensity */}
+                <div className={`absolute ${config.glow} rounded-full blur-2xl`} 
+                     style={{ 
+                       background: `radial-gradient(circle, ${colors.glow}${config.glowIntensity}) 0%, transparent 70%)`,
+                     }} />
+                <div className={`absolute ${config.glow} rounded-full blur-xl`} 
+                     style={{ 
+                       background: `radial-gradient(circle, ${colors.secondary} 0%, transparent 60%)`,
+                       opacity: 0.5,
+                       transform: 'scale(0.8)'
+                     }} />
+                <Star 
+                  className={`${config.star} relative`}
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    fill: colors.primary,
+                    filter: `drop-shadow(0 0 ${particle.size === 'huge' ? '30px' : particle.size === 'large' ? '20px' : particle.size === 'medium' ? '15px' : '10px'} ${colors.glow}0.8))`,
+                  }}
+                />
+                {!particle.collected && (
+                  <>
+                    {[...Array(config.sparkles)].map((_, i) => (
+                      <m.div
+                        key={`sparkle-${particle.id}-${i}`}
+                        className="absolute rounded-full"
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          width: particle.size === 'huge' ? '4px' : particle.size === 'large' ? '3px' : '2px',
+                          height: particle.size === 'huge' ? '4px' : particle.size === 'large' ? '3px' : '2px',
+                          background: `radial-gradient(circle, ${colors.secondary}, ${colors.primary})`,
+                          boxShadow: `0 0 6px ${colors.glow}0.8)`
+                        }}
+                        animate={{
+                          x: [0, (Math.random() - 0.5) * (particle.size === 'huge' ? 80 : 40)],
+                          y: [0, (Math.random() - 0.5) * (particle.size === 'huge' ? 80 : 40)],
+                          opacity: [0, 1, 0],
+                          scale: particle.size === 'huge' ? 2 : 1.5
+                        }}
+                        transition={{
+                          duration: particle.size === 'huge' ? 2 : 1.5,
+                          repeat: Infinity,
+                          delay: i * (0.5 / config.sparkles),
+                          ease: "easeOut"
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+            </m.div>
+          )
+        })}
+      </AnimatePresence>
+    </>
   )
 }

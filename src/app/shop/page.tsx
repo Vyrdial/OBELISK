@@ -23,7 +23,7 @@ interface ShopItem {
   name: string
   description: string
   price: number
-  category: 'singularity' | 'faces' | 'auras' | 'titles' | 'treasures' | 'crowns'
+  category: 'singularity' | 'faces' | 'auras' | 'treasures' | 'crowns'
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
   icon?: React.ReactNode
   preview?: React.ReactNode
@@ -37,7 +37,7 @@ const shopItems: ShopItem[] = [
   // Singularity Styles (Avatar Dots + Node Styles combined)
   {
     id: 'classic-singularity',
-    name: 'Classic Singularity',
+    name: 'The Point',
     description: 'Pure, timeless design. Your avatar and all nodes appear as simple, elegant dots.',
     price: 0,
     category: 'singularity',
@@ -50,106 +50,554 @@ const shopItems: ShopItem[] = [
   },
   {
     id: 'cosmic-glow',
-    name: 'Cosmic Glow',
+    name: 'Slushy',
     description: 'Deep space energy radiates from within. Pulsing with the heartbeat of the universe.',
-    price: 150,
+    price: 100,
+    category: 'singularity',
+    rarity: 'common',
+    locked: true,
+    unlockCondition: 'Premium membership required',
+    preview: <div className="flex items-center justify-center">
+      <div className="relative w-12 h-12">
+        {/* Outer cosmic glow ring */}
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-full shadow-lg shadow-purple-400/60" style={{
+          animation: 'cosmic-breathe 3s ease-in-out infinite'
+        }} />
+        {/* Swirling energy bands */}
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'conic-gradient(from 0deg, transparent, rgba(99,102,241,0.8), transparent, rgba(168,85,247,0.8), transparent, rgba(236,72,153,0.8), transparent)',
+          animation: 'cosmic-swirl 4s linear infinite'
+        }} />
+        {/* Inner pulsing core */}
+        <div className="absolute inset-[30%] bg-gradient-to-br from-purple-200 via-pink-200 to-indigo-200 rounded-full" style={{
+          animation: 'cosmic-pulse 2s ease-in-out infinite',
+          boxShadow: '0 0 20px rgba(168,85,247,0.6)'
+        }} />
+        {/* Energy particles */}
+        <div className="absolute top-1 left-1 w-1 h-1 bg-pink-300 rounded-full" style={{
+          animation: 'particle-orbit 3s linear infinite'
+        }} />
+        <div className="absolute bottom-1 right-1 w-1 h-1 bg-indigo-300 rounded-full" style={{
+          animation: 'particle-orbit 3s linear infinite reverse'
+        }} />
+        {/* Central bright core */}
+        <div className="absolute inset-[40%] bg-white rounded-full opacity-90" />
+      </div>
+      <style jsx>{`
+        @keyframes cosmic-breathe {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        @keyframes cosmic-swirl {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes cosmic-pulse {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.2); filter: brightness(1.3); }
+        }
+        @keyframes particle-orbit {
+          from { transform: rotate(0deg) translateX(12px) rotate(0deg); }
+          to { transform: rotate(360deg) translateX(12px) rotate(-360deg); }
+        }
+      `}</style>
+    </div>
+  },
+  {
+    id: 'stellar-core',
+    name: 'Starburst',
+    description: 'Radiates stellar power. Your avatar and nodes glow with the intensity of a thousand stars.',
+    price: 250,
     category: 'singularity',
     rarity: 'rare',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-full animate-pulse shadow-lg shadow-purple-400/60" />
-    </div>
-  },
-  {
-    id: 'stellar-core',
-    name: 'Stellar Core',
-    description: 'Radiates stellar power. Your avatar and nodes glow with the intensity of a thousand stars.',
-    price: 300,
-    category: 'singularity',
-    rarity: 'epic',
-    locked: true,
-    unlockCondition: 'Premium membership required',
-    preview: <div className="flex items-center justify-center">
-      <div className="relative w-8 h-8 bg-yellow-400 rounded-full animate-pulse shadow-lg shadow-yellow-400/80">
-        <Star className="absolute top-0 left-1 w-2 h-2 text-white animate-pulse" style={{animation: 'star-shimmer 2s ease-in-out infinite'}} />
-        <Star className="absolute top-1 right-0 w-1.5 h-1.5 text-yellow-200 animate-pulse" style={{animation: 'star-shimmer 1.5s ease-in-out infinite 0.3s'}} />
-        <Star className="absolute bottom-0 left-2 w-1 h-1 text-white animate-pulse" style={{animation: 'star-shimmer 1.8s ease-in-out infinite 0.6s'}} />
-        <Star className="absolute bottom-1 right-1 w-1 h-1 text-yellow-200 animate-pulse" style={{animation: 'star-shimmer 1.2s ease-in-out infinite 0.2s'}} />
-        <Star className="absolute top-2 left-0 w-1 h-1 text-white animate-pulse" style={{animation: 'star-shimmer 1.6s ease-in-out infinite 0.8s'}} />
+      <div className="relative w-12 h-12">
+        {/* Main stellar body */}
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-300 via-yellow-400 to-orange-400 rounded-full shadow-lg shadow-yellow-400/80" style={{
+          animation: 'stellar-pulse 2s ease-in-out infinite'
+        }} />
+        
+        {/* Solar flares erupting */}
+        <div className="absolute -top-1 left-1/2 w-1 h-3 bg-gradient-to-t from-orange-400 via-yellow-300 to-transparent" style={{
+          animation: 'solar-flare 3s ease-out infinite',
+          transformOrigin: 'bottom center'
+        }} />
+        <div className="absolute -right-1 top-1/2 w-3 h-1 bg-gradient-to-r from-orange-400 via-yellow-300 to-transparent" style={{
+          animation: 'solar-flare 3s ease-out infinite 0.75s',
+          transformOrigin: 'left center'
+        }} />
+        <div className="absolute -bottom-1 left-1/2 w-1 h-3 bg-gradient-to-b from-orange-400 via-yellow-300 to-transparent" style={{
+          animation: 'solar-flare 3s ease-out infinite 1.5s',
+          transformOrigin: 'top center'
+        }} />
+        <div className="absolute -left-1 top-1/2 w-3 h-1 bg-gradient-to-l from-orange-400 via-yellow-300 to-transparent" style={{
+          animation: 'solar-flare 3s ease-out infinite 2.25s',
+          transformOrigin: 'right center'
+        }} />
+        
+        {/* Corona effect */}
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'radial-gradient(circle at center, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 70%)',
+          animation: 'corona-wave 2.5s ease-in-out infinite'
+        }} />
+        
+        {/* Orbiting stars */}
+        <Star className="absolute w-2 h-2 text-white" style={{
+          animation: 'star-orbit 4s linear infinite',
+          transformOrigin: '16px 16px',
+          left: '8px',
+          top: '-4px'
+        }} />
+        <Star className="absolute w-1.5 h-1.5 text-yellow-200" style={{
+          animation: 'star-orbit 3s linear infinite reverse',
+          transformOrigin: '16px 16px',
+          right: '0px',
+          bottom: '-2px'
+        }} />
+        <Star className="absolute w-1 h-1 text-white" style={{
+          animation: 'star-orbit 5s linear infinite 1s',
+          transformOrigin: '16px 16px',
+          left: '-2px',
+          top: '12px'
+        }} />
+        
+        {/* Bright stellar core */}
+        <div className="absolute inset-[25%] bg-gradient-to-br from-white via-yellow-100 to-yellow-200 rounded-full" style={{
+          animation: 'stellar-core-glow 1.5s ease-in-out infinite',
+          boxShadow: '0 0 20px rgba(255,255,255,0.8)'
+        }} />
+        
+        {/* Inner bright spot */}
+        <div className="absolute inset-[35%] bg-white rounded-full" style={{
+          filter: 'blur(1px)',
+          animation: 'stellar-brightness 2s ease-in-out infinite'
+        }} />
       </div>
+      
+      <style jsx>{`
+        @keyframes stellar-pulse {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.05); filter: brightness(1.2); }
+        }
+        @keyframes solar-flare {
+          0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+          20% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+          80% { transform: scale(0.8) rotate(-5deg); opacity: 0.8; }
+        }
+        @keyframes corona-wave {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.3); opacity: 0.3; }
+        }
+        @keyframes star-orbit {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes stellar-core-glow {
+          0%, 100% { transform: scale(1); filter: brightness(1) blur(0px); }
+          50% { transform: scale(1.1); filter: brightness(1.5) blur(2px); }
+        }
+        @keyframes stellar-brightness {
+          0%, 100% { opacity: 0.9; }
+          50% { opacity: 1; }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'void-essence',
-    name: 'Void Essence',
+    name: 'Void',
     description: 'Mysterious dark singularity. Your avatar and nodes bend light itself with purple void energy.',
-    price: 500,
+    price: 200,
     category: 'singularity',
-    rarity: 'legendary',
+    rarity: 'rare',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-purple-900 rounded-full border-2 border-purple-400 animate-pulse shadow-lg shadow-purple-400/60" />
+      <div className="relative w-12 h-12">
+        {/* Dark void base */}
+        <div className="absolute inset-0 bg-purple-900 rounded-full border-2 border-purple-400 shadow-lg shadow-purple-400/60" />
+        {/* Void distortion effect */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-[-50%] bg-gradient-to-br from-purple-900 via-black to-purple-700 rounded-full" style={{
+            animation: 'void-distort 4s ease-in-out infinite'
+          }} />
+        </div>
+        {/* Void particles being pulled in */}
+        <div className="absolute top-0 left-1/2 w-0.5 h-0.5 bg-purple-300" style={{
+          animation: 'void-absorb-top 2s ease-in infinite'
+        }} />
+        <div className="absolute bottom-0 left-1/2 w-0.5 h-0.5 bg-purple-300" style={{
+          animation: 'void-absorb-bottom 2s ease-in infinite 0.5s'
+        }} />
+        <div className="absolute left-0 top-1/2 w-0.5 h-0.5 bg-purple-300" style={{
+          animation: 'void-absorb-left 2s ease-in infinite 1s'
+        }} />
+        <div className="absolute right-0 top-1/2 w-0.5 h-0.5 bg-purple-300" style={{
+          animation: 'void-absorb-right 2s ease-in infinite 1.5s'
+        }} />
+        {/* Event horizon ring */}
+        <div className="absolute inset-[15%] rounded-full border border-purple-500" style={{
+          animation: 'event-horizon 3s linear infinite',
+          boxShadow: 'inset 0 0 10px rgba(147,51,234,0.8)'
+        }} />
+        {/* Black hole center */}
+        <div className="absolute inset-[30%] bg-black rounded-full" style={{
+          boxShadow: '0 0 15px rgba(0,0,0,0.9) inset, 0 0 25px rgba(147,51,234,0.6)'
+        }} />
+      </div>
+      <style jsx>{`
+        @keyframes void-distort {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          33% { transform: rotate(120deg) scale(1.2); }
+          66% { transform: rotate(240deg) scale(0.9); }
+        }
+        @keyframes void-absorb-top {
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(15px) scale(0); opacity: 0; }
+        }
+        @keyframes void-absorb-bottom {
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-15px) scale(0); opacity: 0; }
+        }
+        @keyframes void-absorb-left {
+          0% { transform: translateX(0) scale(1); opacity: 1; }
+          100% { transform: translateX(15px) scale(0); opacity: 0; }
+        }
+        @keyframes void-absorb-right {
+          0% { transform: translateX(0) scale(1); opacity: 1; }
+          100% { transform: translateX(-15px) scale(0); opacity: 0; }
+        }
+        @keyframes event-horizon {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'golden-majesty',
-    name: 'Golden Majesty',
+    name: 'Midas',
     description: 'Pure golden radiance. Transform your avatar and all nodes into gleaming celestial gold.',
-    price: 400,
+    price: 150,
     category: 'singularity',
-    rarity: 'epic',
+    rarity: 'common',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-yellow-500 rounded-full border-2 border-yellow-300 shadow-lg shadow-yellow-500/60" />
+      <div className="relative w-12 h-12">
+        {/* Golden base with gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 rounded-full border-2 border-yellow-300 shadow-lg shadow-yellow-500/60" />
+        {/* Shimmering effect */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-200 to-transparent" style={{
+            animation: 'golden-shimmer 2s linear infinite',
+            transform: 'translateX(-100%)'
+          }} />
+        </div>
+        {/* Royal rays emanating */}
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'conic-gradient(from 0deg, transparent, rgba(250,204,21,0.4) 15deg, transparent 30deg, transparent, rgba(250,204,21,0.4) 105deg, transparent 120deg, transparent, rgba(250,204,21,0.4) 195deg, transparent 210deg, transparent, rgba(250,204,21,0.4) 285deg, transparent 300deg)',
+          animation: 'royal-rays 6s linear infinite'
+        }} />
+        {/* Golden sparkles */}
+        <div className="absolute top-1 right-1 w-1 h-1 bg-yellow-200 rounded-full" style={{
+          animation: 'sparkle-twinkle 1.5s ease-in-out infinite'
+        }} />
+        <div className="absolute bottom-1 left-1 w-0.5 h-0.5 bg-yellow-100 rounded-full" style={{
+          animation: 'sparkle-twinkle 1.5s ease-in-out infinite 0.3s'
+        }} />
+        <div className="absolute top-2 left-1.5 w-0.5 h-0.5 bg-amber-200 rounded-full" style={{
+          animation: 'sparkle-twinkle 1.5s ease-in-out infinite 0.6s'
+        }} />
+        {/* Inner golden glow */}
+        <div className="absolute inset-[25%] bg-gradient-to-br from-yellow-200 to-amber-300 rounded-full" style={{
+          animation: 'golden-glow 2s ease-in-out infinite',
+          boxShadow: '0 0 10px rgba(250,204,21,0.8)'
+        }} />
+        {/* Bright center */}
+        <div className="absolute inset-[40%] bg-yellow-100 rounded-full" />
+      </div>
+      <style jsx>{`
+        @keyframes golden-shimmer {
+          to { transform: translateX(100%); }
+        }
+        @keyframes royal-rays {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes sparkle-twinkle {
+          0%, 100% { opacity: 0; transform: scale(0); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes golden-glow {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.1); filter: brightness(1.2); }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'crystal-essence',
-    name: 'Crystal Essence',
+    name: 'Frosty',
     description: 'Crystalline perfection. Your avatar and nodes become crystalline structures that refract cosmic light.',
-    price: 600,
+    price: 180,
     category: 'singularity',
-    rarity: 'legendary',
+    rarity: 'rare',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-cyan-400 rounded-full border-2 border-cyan-200 animate-pulse shadow-lg shadow-cyan-400/60" />
+      <div className="relative w-12 h-12">
+        {/* Crystal base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-300 via-cyan-400 to-blue-400 rounded-full border-2 border-cyan-200 shadow-lg shadow-cyan-400/60" />
+        {/* Crystalline facets */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.6) 35%, transparent 40%)',
+            animation: 'crystal-refract 3s linear infinite'
+          }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(-45deg, transparent 40%, rgba(255,255,255,0.4) 42%, transparent 44%)',
+            animation: 'crystal-refract 2.5s linear infinite reverse'
+          }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(135deg, transparent 35%, rgba(34,211,238,0.5) 38%, transparent 41%)',
+            animation: 'crystal-refract 2s linear infinite'
+          }} />
+        </div>
+        {/* Inner crystal core with prismatic effect */}
+        <div className="absolute inset-[25%] rounded-full" style={{
+          background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(34,211,238,0.6) 50%, rgba(59,130,246,0.4) 100%)',
+          animation: 'crystal-pulse 2s ease-in-out infinite',
+          boxShadow: '0 0 15px rgba(34,211,238,0.8)'
+        }} />
+        {/* Light refraction spots */}
+        <div className="absolute top-1.5 right-1.5 w-1 h-1 bg-white rounded-full opacity-80" style={{
+          animation: 'light-sparkle 1.5s ease-in-out infinite'
+        }} />
+        <div className="absolute bottom-2 left-1.5 w-0.5 h-0.5 bg-cyan-100 rounded-full" style={{
+          animation: 'light-sparkle 1.5s ease-in-out infinite 0.5s'
+        }} />
+      </div>
+      <style jsx>{`
+        @keyframes crystal-refract {
+          from { transform: translateX(-100%) translateY(-100%); }
+          to { transform: translateX(100%) translateY(100%); }
+        }
+        @keyframes shard-float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-2px) rotate(5deg); }
+        }
+        @keyframes crystal-pulse {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.15); filter: brightness(1.3); }
+        }
+        @keyframes light-sparkle {
+          0%, 100% { opacity: 0.4; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'plasma-core',
     name: 'Plasma Core',
     description: 'Chaotic plasma energy. Your avatar and nodes vibrate with unstable cosmic force.',
-    price: 800,
-    category: 'singularity',
-    rarity: 'legendary',
-    locked: true,
-    unlockCondition: 'Premium membership required',
-    preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-pink-500 rounded-full border-2 border-pink-300 shadow-lg shadow-pink-500/60" style={{animation: 'vibrate 0.3s linear infinite'}} />
-    </div>
-  },
-  {
-    id: 'aurora',
-    name: 'Borealis Crown',
-    description: 'Dancing northern lights. Your avatar and nodes shimmer with shifting aurora colors.',
-    price: 350,
+    price: 300,
     category: 'singularity',
     rarity: 'epic',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="w-8 h-8 bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
+      <div className="relative w-12 h-12">
+        {/* Unstable plasma base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 rounded-full border-2 border-pink-300 shadow-lg shadow-pink-500/60" style={{
+          animation: 'plasma-vibrate 0.2s linear infinite'
+        }} />
+        
+        {/* Plasma tendrils */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-[-20%] bg-gradient-to-r from-transparent via-pink-400 to-transparent" style={{
+            animation: 'plasma-flow 1s linear infinite',
+            transform: 'rotate(0deg)'
+          }} />
+          <div className="absolute inset-[-20%] bg-gradient-to-r from-transparent via-purple-400 to-transparent" style={{
+            animation: 'plasma-flow 0.8s linear infinite reverse',
+            transform: 'rotate(45deg)'
+          }} />
+          <div className="absolute inset-[-20%] bg-gradient-to-r from-transparent via-blue-400 to-transparent" style={{
+            animation: 'plasma-flow 1.2s linear infinite',
+            transform: 'rotate(90deg)'
+          }} />
+        </div>
+        
+        {/* Electric arcs */}
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'conic-gradient(from 0deg, transparent 85%, rgba(236,72,153,0.8) 87%, transparent 89%, transparent 175%, rgba(147,51,234,0.8) 177%, transparent 179%, transparent 265%, rgba(59,130,246,0.8) 267%, transparent 269%, transparent 355%, rgba(236,72,153,0.8) 357%, transparent 359%)',
+          animation: 'plasma-arc 0.5s linear infinite'
+        }} />
+        
+        {/* Unstable energy bursts */}
+        <div className="absolute top-0 left-1/2 w-2 h-2 bg-pink-300 rounded-full" style={{
+          animation: 'plasma-burst 1.5s ease-out infinite',
+          filter: 'blur(1px)'
+        }} />
+        <div className="absolute bottom-0 right-1/3 w-1.5 h-1.5 bg-purple-300 rounded-full" style={{
+          animation: 'plasma-burst 1.5s ease-out infinite 0.5s',
+          filter: 'blur(1px)'
+        }} />
+        <div className="absolute left-0 top-1/3 w-1 h-1 bg-blue-300 rounded-full" style={{
+          animation: 'plasma-burst 1.5s ease-out infinite 1s',
+          filter: 'blur(1px)'
+        }} />
+        
+        {/* Chaotic core */}
+        <div className="absolute inset-[25%] rounded-full" style={{
+          background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(236,72,153,0.6) 33%, rgba(147,51,234,0.6) 66%, rgba(59,130,246,0.6) 100%)',
+          animation: 'plasma-core-chaos 0.3s ease-in-out infinite',
+          filter: 'blur(0.5px)'
+        }} />
+        
+        {/* Bright unstable center */}
+        <div className="absolute inset-[35%] bg-white rounded-full" style={{
+          animation: 'plasma-flicker 0.1s linear infinite',
+          opacity: 0.9
+        }} />
+      </div>
+      
+      <style jsx>{`
+        @keyframes plasma-vibrate {
+          0% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(0.5px, -0.5px) scale(1.01); }
+          50% { transform: translate(-0.5px, 0.5px) scale(0.99); }
+          75% { transform: translate(0.5px, 0.5px) scale(1.01); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes plasma-flow {
+          from { transform: rotate(var(--rotation, 0deg)) translateX(0); }
+          to { transform: rotate(calc(var(--rotation, 0deg) + 360deg)) translateX(0); }
+        }
+        @keyframes plasma-arc {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes plasma-burst {
+          0% { transform: scale(0) translate(0, 0); opacity: 1; }
+          50% { transform: scale(1.5) translate(var(--tx, 5px), var(--ty, -5px)); opacity: 0.5; }
+          100% { transform: scale(0) translate(var(--tx, 10px), var(--ty, -10px)); opacity: 0; }
+        }
+        @keyframes plasma-core-chaos {
+          0%, 100% { transform: scale(1) rotate(0deg); filter: hue-rotate(0deg) blur(0.5px); }
+          33% { transform: scale(1.1) rotate(120deg); filter: hue-rotate(60deg) blur(1px); }
+          66% { transform: scale(0.95) rotate(240deg); filter: hue-rotate(-60deg) blur(0.5px); }
+        }
+        @keyframes plasma-flicker {
+          0%, 100% { opacity: 0.9; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+      `}</style>
+    </div>
+  },
+  {
+    id: 'aurora',
+    name: 'Borealis',
+    description: 'Dancing northern lights. Your avatar and nodes shimmer with shifting aurora colors.',
+    price: 120,
+    category: 'singularity',
+    rarity: 'common',
+    locked: true,
+    unlockCondition: 'Premium membership required',
+    preview: <div className="flex items-center justify-center">
+      <div className="relative w-12 h-12">
+        {/* Base aurora gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 rounded-full shadow-lg shadow-green-400/50" style={{
+          animation: 'aurora-shift 4s ease-in-out infinite'
+        }} />
+        
+        {/* Dancing aurora curtains */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-green-300 to-transparent" style={{
+            animation: 'aurora-dance 3s ease-in-out infinite',
+            transform: 'translateY(50%)'
+          }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-blue-300 to-transparent" style={{
+            animation: 'aurora-dance 3.5s ease-in-out infinite 0.5s',
+            transform: 'translateY(50%)'
+          }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-purple-300 to-transparent" style={{
+            animation: 'aurora-dance 4s ease-in-out infinite 1s',
+            transform: 'translateY(50%)'
+          }} />
+        </div>
+        
+        {/* Shimmering waves */}
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'conic-gradient(from 0deg, transparent, rgba(74,222,128,0.4), rgba(59,130,246,0.4), rgba(147,51,234,0.4), transparent, rgba(74,222,128,0.4), rgba(59,130,246,0.4), rgba(147,51,234,0.4), transparent)',
+          animation: 'aurora-rotate 8s linear infinite'
+        }} />
+        
+        {/* Aurora particles */}
+        <div className="absolute top-1 left-2 w-0.5 h-3 bg-gradient-to-t from-green-400 to-transparent" style={{
+          animation: 'aurora-particle 2s ease-in-out infinite',
+          filter: 'blur(0.5px)'
+        }} />
+        <div className="absolute top-1.5 right-2 w-0.5 h-2.5 bg-gradient-to-t from-blue-400 to-transparent" style={{
+          animation: 'aurora-particle 2.5s ease-in-out infinite 0.5s',
+          filter: 'blur(0.5px)'
+        }} />
+        <div className="absolute top-2 left-1/2 w-0.5 h-2 bg-gradient-to-t from-purple-400 to-transparent" style={{
+          animation: 'aurora-particle 3s ease-in-out infinite 1s',
+          filter: 'blur(0.5px)'
+        }} />
+        
+        {/* Inner glow */}
+        <div className="absolute inset-[25%] rounded-full" style={{
+          background: 'radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(74,222,128,0.3) 33%, rgba(59,130,246,0.3) 66%, rgba(147,51,234,0.3) 100%)',
+          animation: 'aurora-glow 3s ease-in-out infinite',
+          filter: 'blur(2px)'
+        }} />
+        
+        {/* Bright center */}
+        <div className="absolute inset-[35%] bg-white rounded-full opacity-70" style={{
+          animation: 'aurora-center 2s ease-in-out infinite'
+        }} />
+      </div>
+      
+      <style jsx>{`
+        @keyframes aurora-shift {
+          0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+          33% { filter: hue-rotate(30deg) brightness(1.1); }
+          66% { filter: hue-rotate(-30deg) brightness(0.9); }
+        }
+        @keyframes aurora-dance {
+          0%, 100% { transform: translateY(50%) scaleY(0.5); opacity: 0; }
+          50% { transform: translateY(-50%) scaleY(1.5); opacity: 0.6; }
+        }
+        @keyframes aurora-rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes aurora-particle {
+          0%, 100% { transform: translateY(0) scaleY(1); opacity: 0; }
+          50% { transform: translateY(-5px) scaleY(1.5); opacity: 0.8; }
+        }
+        @keyframes aurora-glow {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        @keyframes aurora-center {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.1); }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'lightning',
     name: 'Voltaic Surge',
     description: 'Electric storm energy. Your avatar and nodes crackle with pure electrical power.',
-    price: 450,
+    price: 500,
     category: 'singularity',
     rarity: 'epic',
     locked: true,
@@ -179,7 +627,7 @@ const shopItems: ShopItem[] = [
     id: 'flame',
     name: 'Infernal Heart',
     description: 'Eternal fire burns within. Your avatar and nodes flicker with living flame.',
-    price: 400,
+    price: 450,
     category: 'singularity',
     rarity: 'epic',
     locked: true,
@@ -198,7 +646,7 @@ const shopItems: ShopItem[] = [
     id: 'frost',
     name: 'Arctic Reverie',
     description: 'Crystalline ice energy. Your avatar and nodes emanate cold, sharp beauty.',
-    price: 250,
+    price: 280,
     category: 'singularity',
     rarity: 'rare',
     locked: true,
@@ -215,7 +663,7 @@ const shopItems: ShopItem[] = [
     id: 'grass',
     name: 'Verdant Pulse',
     description: 'Living nature energy. Your avatar and nodes pulse with the growth of life.',
-    price: 200,
+    price: 80,
     category: 'singularity',
     rarity: 'common',
     locked: true,
@@ -232,9 +680,9 @@ const shopItems: ShopItem[] = [
     id: 'wind',
     name: 'Zephyr Drift',
     description: 'Flowing air currents. Your avatar and nodes drift with ethereal grace.',
-    price: 300,
+    price: 150,
     category: 'singularity',
-    rarity: 'rare',
+    rarity: 'common',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
@@ -258,7 +706,7 @@ const shopItems: ShopItem[] = [
     id: 'sand',
     name: 'Mirage Veil',
     description: 'Desert essence flows. Your avatar and nodes shift like dunes in the wind.',
-    price: 180,
+    price: 100,
     category: 'singularity',
     rarity: 'common',
     locked: true,
@@ -284,7 +732,7 @@ const shopItems: ShopItem[] = [
     id: 'stone',
     name: 'Titan\'s Embrace',
     description: 'Ancient rock strength. Your avatar and nodes stand immovable and eternal.',
-    price: 220,
+    price: 120,
     category: 'singularity',
     rarity: 'common',
     locked: true,
@@ -304,9 +752,9 @@ const shopItems: ShopItem[] = [
     id: 'leaf',
     name: 'Sylvan Echo',
     description: 'Forest whispers. Your avatar and nodes rustle with ancient woodland magic.',
-    price: 280,
+    price: 350,
     category: 'singularity',
-    rarity: 'rare',
+    rarity: 'epic',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
@@ -328,7 +776,7 @@ const shopItems: ShopItem[] = [
     id: 'quantum-nexus',
     name: 'Quantum Nexus',
     description: 'Reality fractures around this impossible geometry. Exists in multiple dimensions simultaneously.',
-    price: 750,
+    price: 1000,
     category: 'singularity',
     rarity: 'legendary',
     locked: true,
@@ -352,7 +800,7 @@ const shopItems: ShopItem[] = [
     id: 'temporal-vortex',
     name: 'Temporal Vortex',
     description: 'Time spirals endlessly around this chronomorphic singularity. Past and future converge.',
-    price: 950,
+    price: 1200,
     category: 'singularity',
     rarity: 'legendary',
     locked: true,
@@ -377,32 +825,164 @@ const shopItems: ShopItem[] = [
     id: 'cosmic-forge',
     name: 'Cosmic Forge',
     description: 'Where stars are born and galaxies are shaped. The fundamental force of creation itself.',
-    price: 850,
+    price: 800,
     category: 'singularity',
     rarity: 'legendary',
     locked: true,
     unlockCondition: 'Premium membership required',
     preview: <div className="flex items-center justify-center">
-      <div className="relative w-8 h-8 bg-gradient-to-br from-orange-400 via-red-500 to-yellow-300 rounded-full shadow-2xl shadow-orange-500/80">
+      <div className="relative w-12 h-12">
+        {/* Main forge core - molten metal/lava base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-red-700 to-yellow-600 rounded-full shadow-2xl shadow-orange-500/80">
+          {/* Inner molten core with animated glow */}
+          <div className="absolute inset-0.5 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 rounded-full" style={{
+            animation: 'forge-pulse 1.2s ease-in-out infinite'
+          }} />
+          
+          {/* Bubbling lava effect */}
+          <div className="absolute bottom-1 left-1.5 w-1.5 h-1.5 bg-yellow-300 rounded-full" style={{
+            animation: 'lava-bubble 2s ease-in-out infinite'
+          }} />
+          <div className="absolute bottom-0.5 right-2 w-1 h-1 bg-orange-300 rounded-full" style={{
+            animation: 'lava-bubble 2.5s ease-in-out infinite 0.5s'
+          }} />
+          <div className="absolute bottom-1.5 left-2.5 w-0.5 h-0.5 bg-yellow-200 rounded-full" style={{
+            animation: 'lava-bubble 1.8s ease-in-out infinite 1s'
+          }} />
+          
+          {/* Central white-hot core */}
+          <div className="absolute inset-2 bg-gradient-to-br from-yellow-100 via-white to-orange-200 rounded-full opacity-90" style={{
+            animation: 'forge-core 0.8s ease-in-out infinite'
+          }} />
+          
+          {/* Flame sparks jumping out */}
+          <div className="absolute -top-1 left-2 w-0.5 h-2 bg-gradient-to-t from-orange-400 to-transparent" style={{
+            animation: 'flame-spark 1.5s ease-out infinite'
+          }} />
+          <div className="absolute -top-1 right-1.5 w-0.5 h-1.5 bg-gradient-to-t from-yellow-400 to-transparent" style={{
+            animation: 'flame-spark 1.8s ease-out infinite 0.3s'
+          }} />
+          <div className="absolute -top-0.5 left-3.5 w-0.5 h-1 bg-gradient-to-t from-red-400 to-transparent" style={{
+            animation: 'flame-spark 2s ease-out infinite 0.6s'
+          }} />
+          
+          {/* Side flames */}
+          <div className="absolute -left-1 top-2 w-1.5 h-2 bg-gradient-to-l from-orange-500 to-transparent rounded-full" style={{
+            animation: 'side-flame 1.3s ease-in-out infinite',
+            transform: 'rotate(-30deg)'
+          }} />
+          <div className="absolute -right-1 top-1.5 w-1.5 h-2 bg-gradient-to-r from-yellow-500 to-transparent rounded-full" style={{
+            animation: 'side-flame 1.5s ease-in-out infinite 0.4s',
+            transform: 'rotate(30deg)'
+          }} />
+          
+          {/* Forge ring - hammered metal edge */}
+          <div className="absolute inset-0 rounded-full border-2 border-orange-800/60" style={{
+            animation: 'forge-ring 3s linear infinite',
+            boxShadow: 'inset 0 0 4px rgba(255,140,0,0.6)'
+          }} />
+          
+          {/* Spark particles */}
+          <div className="absolute top-0 left-1/2 w-px h-px bg-yellow-200 rounded-full" style={{
+            animation: 'spark-fly 1.2s ease-out infinite'
+          }} />
+          <div className="absolute top-1 right-1 w-px h-px bg-orange-200 rounded-full" style={{
+            animation: 'spark-fly 1.5s ease-out infinite 0.2s'
+          }} />
+          <div className="absolute top-0.5 left-1 w-px h-px bg-yellow-300 rounded-full" style={{
+            animation: 'spark-fly 1.8s ease-out infinite 0.4s'
+          }} />
+        </div>
+        
+        {/* Heat distortion effect overlay */}
         <div className="absolute inset-0 rounded-full" style={{
-          background: 'radial-gradient(circle at center, rgba(255,69,0,0.9) 0%, rgba(255,140,0,0.7) 30%, rgba(255,215,0,0.5) 60%, transparent 80%)',
-          animation: 'forge-burn 2s ease-in-out infinite'
-        }} />
-        <div className="absolute inset-0 rounded-full border-2 border-yellow-300" style={{animation: 'forge-ring 3s linear infinite'}} />
-        <div className="absolute inset-1 bg-gradient-to-br from-yellow-200 via-orange-300 to-red-400 rounded-full" style={{animation: 'forge-core 1.5s ease-in-out infinite'}} />
-        <div className="absolute inset-2 bg-white rounded-full opacity-80" style={{animation: 'forge-heart 1s ease-in-out infinite'}} />
-        <div className="absolute inset-0 rounded-full" style={{
-          background: 'conic-gradient(from 0deg, transparent 80%, rgba(255,215,0,0.8) 85%, transparent 90%)',
-          animation: 'forge-spark 2s linear infinite'
+          background: 'radial-gradient(circle at center, transparent 30%, rgba(255,69,0,0.2) 60%, transparent 100%)',
+          animation: 'heat-wave 2s ease-in-out infinite'
         }} />
       </div>
+      
+      <style jsx>{`
+        @keyframes forge-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.85; transform: scale(0.98); }
+        }
+        
+        @keyframes forge-core {
+          0%, 100% { opacity: 0.9; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        @keyframes lava-bubble {
+          0%, 100% { 
+            transform: translateY(0) scale(1); 
+            opacity: 0.8;
+          }
+          50% { 
+            transform: translateY(-3px) scale(1.2); 
+            opacity: 1;
+          }
+        }
+        
+        @keyframes flame-spark {
+          0% {
+            opacity: 0;
+            transform: translateY(0) scale(1);
+          }
+          20% {
+            opacity: 1;
+            transform: translateY(-2px) scale(1.1);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.3);
+          }
+        }
+        
+        @keyframes side-flame {
+          0%, 100% { 
+            opacity: 0.6;
+            transform: scale(1) rotate(var(--rotation, 0deg));
+          }
+          50% { 
+            opacity: 0.9;
+            transform: scale(1.2) rotate(var(--rotation, 0deg));
+          }
+        }
+        
+        @keyframes forge-ring {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes spark-fly {
+          0% {
+            opacity: 1;
+            transform: translate(0, 0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(var(--spark-x, 4px), var(--spark-y, -6px)) scale(0.2);
+          }
+        }
+        
+        @keyframes heat-wave {
+          0%, 100% { 
+            opacity: 0.3;
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.5;
+            transform: scale(1.1);
+          }
+        }
+      `}</style>
     </div>
   },
   {
     id: 'shadow-monarch',
     name: 'Shadow Monarch',
     description: 'Absolute darkness given form. Light bends away, reality kneels before the void sovereign.',
-    price: 1200,
+    price: 1500,
     category: 'singularity',
     rarity: 'legendary',
     locked: true,
@@ -424,9 +1004,9 @@ const shopItems: ShopItem[] = [
   },
   {
     id: 'prism-matrix',
-    name: 'Prism Matrix',
+    name: 'Iridescence',
     description: 'Pure light fractalized into infinite geometries. Every photon tells a different story.',
-    price: 680,
+    price: 600,
     category: 'singularity',
     rarity: 'epic',
     locked: true,
@@ -454,7 +1034,7 @@ const shopItems: ShopItem[] = [
     id: 'nebula-heart',
     name: 'Nebula Heart',
     description: 'The beating core of a stellar nursery. Where cosmic dust dances into new worlds.',
-    price: 420,
+    price: 550,
     category: 'singularity',
     rarity: 'epic',
     locked: true,
@@ -673,7 +1253,7 @@ const shopItems: ShopItem[] = [
   },
   {
     id: 'golden-majesty',
-    name: 'Golden Majesty',
+    name: 'Midas',
     description: 'Royal golden radiance that shines with divine light.',
     price: 600,
     category: 'auras',
@@ -756,34 +1336,6 @@ const shopItems: ShopItem[] = [
     </div>
   },
 
-  // Titles
-  {
-    id: 'null-seeker',
-    name: 'Null Seeker',
-    description: 'For those who understand the void.',
-    price: 75,
-    category: 'titles',
-    rarity: 'common',
-    icon: <Circle className="w-5 h-5" />
-  },
-  {
-    id: 'systems-sage',
-    name: 'Systems Sage',
-    description: 'Master of interconnected knowledge.',
-    price: 200,
-    category: 'titles',
-    rarity: 'rare',
-    icon: <Crown className="w-5 h-5" />
-  },
-  {
-    id: 'cosmic-architect',
-    name: 'Cosmic Architect',
-    description: 'Builder of universal understanding.',
-    price: 500,
-    category: 'titles',
-    rarity: 'legendary',
-    icon: <Diamond className="w-5 h-5" />
-  },
 
   // Treasures (special earned items)
   {
@@ -805,8 +1357,7 @@ const categories = [
   { id: 'auras', name: 'Auras', icon: Zap },
   { id: 'crowns', name: 'Accessories', icon: Crown },
   { id: 'faces', name: 'Faces', icon: Smile },
-  { id: 'treasures', name: 'Treasures', icon: Shield },
-  { id: 'titles', name: 'Titles', icon: Diamond }
+  { id: 'treasures', name: 'Treasures', icon: Shield }
 ]
 
 const rarityColors = {
@@ -841,14 +1392,13 @@ function ShopContent() {
       case 'faces': return 'face'
       case 'auras': return 'aura'
       case 'singularity': return 'singularity'
-      case 'titles': return 'title'
       case 'crowns': return 'crown'
       default: return category
     }
   }
 
 
-  const featuredItemIds = ['flame', 'lightning', 'plasma-core', 'void-essence']
+  const featuredItemIds = ['stellar-core', 'cosmic-glow', 'void-essence', 'prism-matrix']
   
   const filteredItems = selectedCategory === 'all' 
     ? shopItems.filter(item => featuredItemIds.includes(item.id))
@@ -928,7 +1478,7 @@ function ShopContent() {
             <m.div
               animate={{ y: [-5, 5, -5] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="relative mx-auto mb-8 inline-block"
+              className="relative mx-auto mb-2 inline-block"
               style={{ padding: '40px' }}
             >
               <EquippedAvatar 
@@ -941,7 +1491,7 @@ function ShopContent() {
                 onClick={() => goToProfile()}
               />
             </m.div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white cosmic-heading mb-4">
+            <h1 className="text-5xl md:text-7xl font-bold text-white cosmic-heading">
               Shop
             </h1>
           </m.div>
@@ -987,24 +1537,23 @@ function ShopContent() {
                 transition={{ duration: 0.03, ease: "easeOut" }}
                 className={`glass-morphism rounded-2xl p-6 border-2 ${rarityColors[item.rarity]} hover:shadow-lg relative`}
               >
-                {/* Rarity Badge - Top Left */}
-                <div className="absolute top-3 left-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${rarityColors[item.rarity]} bg-black/60`}>
+                {/* Item Preview - Much Larger */}
+                <div className="flex justify-center mb-4 py-4">
+                  <div className="w-32 h-32 rounded-xl bg-black/40 border border-white/20 flex items-center justify-center transform scale-150">
+                    {item.preview || item.icon || <EquippedAvatar size="lg" showPulse={false} showAura={false} showEffects={false} />}
+                  </div>
+                </div>
+
+                {/* Rarity Badge - Below preview */}
+                <div className="flex justify-center mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${rarityColors[item.rarity]} bg-black/80 backdrop-blur-sm`}>
                     {item.rarity.toUpperCase()}
                   </span>
                 </div>
 
-                {/* Item Preview */}
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/20 flex items-center justify-center">
-                    {item.preview || item.icon || <EquippedAvatar size="md" showPulse={false} showAura={false} showEffects={false} />}
-                  </div>
-                </div>
-
-                {/* Item Info */}
+                {/* Item Info - No Description */}
                 <div className="text-center mb-4">
-                  <h3 className="text-white font-bold text-lg mb-2">{item.name}</h3>
-                  <p className="text-white/70 text-sm leading-relaxed">{item.description}</p>
+                  <h3 className="text-white font-bold text-lg">{item.name}</h3>
                 </div>
 
 
@@ -1025,9 +1574,9 @@ function ShopContent() {
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-center gap-2 text-cosmic-starlight font-bold">
-                        <Sparkles className="w-4 h-4" />
-                        <span>{item.price} Stardust</span>
+                      <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border border-cosmic-stardust/30 rounded-lg">
+                        <Star className="w-4 h-4 text-cosmic-stardust fill-cosmic-stardust drop-shadow-[0_0_4px_rgba(241,196,64,0.5)]" />
+                        <span className="text-cosmic-stardust font-bold font-mono">{item.price.toLocaleString()}</span>
                       </div>
 
                       {isOwned(item.id) || item.owned || ['none', 'cosmic-aurora', 'classic-singularity'].includes(item.id) ? (

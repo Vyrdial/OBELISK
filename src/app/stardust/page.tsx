@@ -9,7 +9,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { useProfileNavigation } from '@/lib/profileNavigation'
 import TopNavigationBar from '@/components/ui/TopNavigationBar'
-import OptimizedCosmicBackground from '@/components/effects/OptimizedCosmicBackground'
+import StardustRainBackground from '@/components/effects/StardustRainBackground'
 import ClientOnly from '@/components/effects/ClientOnly'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import StardustCounter from '@/components/ui/StardustCounter'
@@ -68,8 +68,8 @@ function StardustContent() {
 
   return (
     <div className="min-h-screen bg-cosmic-gradient relative overflow-hidden">
-      <ClientOnly fallback={<div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-blue-950 to-purple-950" />}>
-        <OptimizedCosmicBackground intensity="low" />
+      <ClientOnly fallback={<div className="fixed inset-0 bg-gradient-to-b from-amber-900/20 via-yellow-950/20 to-orange-950/20" />}>
+        <StardustRainBackground />
       </ClientOnly>
       
       <TopNavigationBar />
@@ -218,16 +218,10 @@ function StardustContent() {
                 userId={profile?.id || ''}
                 type="stardust"
                 packageType={selectedPackage.id}
-                className="w-full"
+                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
               >
-                <m.button
-                  className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <ShoppingBag className="w-5 h-5" />
-                  Purchase for ${selectedPackage.price}
-                </m.button>
+                <ShoppingBag className="w-5 h-5" />
+                Purchase for ${selectedPackage.price}
               </StripeCheckout>
 
               <p className="text-white/40 text-xs mt-4">

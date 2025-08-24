@@ -21,7 +21,7 @@ export const allConcepts: ConceptData[] = [
     category: 'binary',
     description: 'The foundation of digital logic - ON and OFF',
     longDescription: 'Binary states represent the two fundamental positions in digital systems: ON (1, true, HIGH) and OFF (0, false, LOW). These states form the basis of all computational logic, where electrical current either flows or doesn\'t flow through a circuit.',
-    relatedConcepts: ['logic-gates', 'boolean-algebra'],
+    relatedConcepts: ['logic-gates', 'binary-algebra'],
     discoveredBy: 'on-off',
     color: 'purple'
   },
@@ -33,7 +33,7 @@ export const allConcepts: ConceptData[] = [
     description: 'Circuits that perform logical operations on binary inputs',
     longDescription: 'Logic gates are the building blocks of digital circuits. They take one or more binary inputs and produce a single binary output based on logical rules. The fundamental gates include AND, OR, NOT, XOR, NAND, and NOR.',
     unlockRequirements: ['binary-states'],
-    relatedConcepts: ['binary-states', 'truth-tables', 'boolean-algebra'],
+    relatedConcepts: ['binary-states', 'truth-tables', 'binary-algebra'],
     discoveredBy: 'logic-gates',
     color: 'blue'
   },
@@ -45,17 +45,17 @@ export const allConcepts: ConceptData[] = [
     description: 'Complete mapping of all possible input-output combinations',
     longDescription: 'State tables systematically list all possible combinations of inputs and their corresponding outputs for logical operations. They provide a complete specification of how a logical system behaves.',
     unlockRequirements: ['logic-gates'],
-    relatedConcepts: ['logic-gates', 'boolean-algebra'],
+    relatedConcepts: ['logic-gates', 'binary-algebra'],
     discoveredBy: 'truth-tables',
     color: 'green'
   },
   {
-    id: 'boolean-algebra',
+    id: 'binary-algebra',
     address: '0x0004',
-    name: 'Boolean Algebra',
+    name: 'Binary Algebra',
     category: 'logic',
     description: 'Mathematical operations on logical values',
-    longDescription: 'Boolean algebra is a branch of algebra where variables have only two possible values: true or false. It provides the mathematical foundation for digital logic design and computer science.',
+    longDescription: 'Binary algebra is a branch of algebra where variables have only two possible values: true or false. It provides the mathematical foundation for digital logic design and computer science.',
     unlockRequirements: ['logic-gates', 'truth-tables'],
     relatedConcepts: ['logic-gates', 'truth-tables', 'binary-states'],
     color: 'indigo'

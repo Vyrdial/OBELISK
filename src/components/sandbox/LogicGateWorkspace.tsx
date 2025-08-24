@@ -239,6 +239,12 @@ interface LogicGateWorkspaceProps {
   onCircuitUpdate?: (gates: LogicGate[], connections: Connection[]) => void
   objective?: string
   puzzleComplete?: boolean
+  initialGates?: LogicGate[]
+  enableZoom?: boolean
+  enablePan?: boolean
+  showWiringHelp?: boolean
+  wiringHelpText?: string
+  onConnectionStateChange?: (isConnecting: boolean) => void
 }
 
 const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({ 
@@ -247,9 +253,15 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   componentLimits,
   onCircuitUpdate,
   objective,
-  puzzleComplete
+  puzzleComplete,
+  initialGates = [],
+  enableZoom = true,
+  enablePan = true,
+  showWiringHelp = false,
+  wiringHelpText = '',
+  onConnectionStateChange
 }: LogicGateWorkspaceProps = {}, ref) => {
-  const [gates, setGates] = useState<LogicGate[]>([])
+  const [gates, setGates] = useState<LogicGate[]>(initialGates)
   const [connections, setConnections] = useState<Connection[]>([])
   const [selectedGate, setSelectedGate] = useState<string | null>(null)
   const [connectingFrom, setConnectingFrom] = useState<{ gateId: string; point: ConnectionPoint } | null>(null)
@@ -293,7 +305,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [showEquation, setShowEquation] = useState(false)
   const [equationMode, setEquationMode] = useState<'generate' | 'parse'>('generate')
   const [equationFormat, setEquationFormat] = useState<'SOP' | 'POS' | 'SIMPLIFIED'>('SIMPLIFIED')
-  const [equationInput, setEquationInput] = useState('')
+  const [equationInput, setEquationInput] = useState('Out1 = ')
   const [syntaxError, setSyntaxError] = useState<string | null>(null)
   const [bracketSuggestion, setBracketSuggestion] = useState<string>('')
   const [copied, setCopied] = useState(false)
@@ -347,6 +359,56 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   
   // Grid size for snapping (matches the visual grid)
   const GRID_SIZE = 40
+  
+  // Component size for collision detection
+  const COMPONENT_SIZE = 80 // Approximate size of a component
+  
+  // Check if two components overlap
+  const checkOverlap = (x1: number, y1: number, x2: number, y2: number) => {
+    const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+    return distance < COMPONENT_SIZE
+  }
+  
+  // Check if a position overlaps with any existing gates
+  const isPositionOccupied = (x: number, y: number, excludeGateId?: string) => {
+    return gates.some(gate => {
+      if (gate.id === excludeGateId) return false
+      return checkOverlap(x, y, gate.x, gate.y)
+    })
+  }
+  
+  // Find the nearest valid position from a target position
+  const findValidPosition = (targetX: number, targetY: number, excludeGateId?: string): { x: number, y: number } => {
+    // First check if the target position is valid
+    if (!isPositionOccupied(targetX, targetY, excludeGateId)) {
+      return { x: targetX, y: targetY }
+    }
+    
+    // Search in expanding circles for a valid position
+    const maxRadius = 500
+    const step = GRID_SIZE
+    
+    for (let radius = step; radius <= maxRadius; radius += step) {
+      // Check positions in a circle around the target
+      const numPoints = Math.max(8, Math.floor(2 * Math.PI * radius / step))
+      
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * 2 * Math.PI
+        const x = targetX + radius * Math.cos(angle)
+        const y = targetY + radius * Math.sin(angle)
+        
+        // Snap to grid if enabled
+        const snappedPos = snapToGridPosition(x, y)
+        
+        if (!isPositionOccupied(snappedPos.x, snappedPos.y, excludeGateId)) {
+          return snappedPos
+        }
+      }
+    }
+    
+    // If no valid position found (very unlikely), return offset position
+    return { x: targetX + COMPONENT_SIZE, y: targetY + COMPONENT_SIZE }
+  }
   
   // Snap position to grid
   const snapToGridPosition = (x: number, y: number) => {
@@ -529,6 +591,13 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [connectingFrom])
+  
+  // Notify parent about connection state changes
+  useEffect(() => {
+    if (onConnectionStateChange) {
+      onConnectionStateChange(!!connectingFrom)
+    }
+  }, [connectingFrom, onConnectionStateChange])
 
   // Initialize stepwise mode with selected switch states
   const initializeStepwise = useCallback((preserveStep = false) => {
@@ -736,7 +805,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   // Handle wheel events with passive: false for trackpad support
   useEffect(() => {
     const workspace = workspaceRef.current
-    if (!workspace) return
+    if (!workspace || !enableZoom) return
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
@@ -769,7 +838,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     return () => {
       workspace.removeEventListener('wheel', handleWheel)
     }
-  }, [zoom, screenToWorld])
+  }, [zoom, screenToWorld, enableZoom])
 
   // Proper step-by-step propagation with gate illumination as separate frames
   const calculateStepwise = useCallback((forceStep = false, direction = 'forward') => {
@@ -1020,7 +1089,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     const worldPos = screenToWorld(screenX, screenY)
     
     // Snap to grid if enabled
-    const { x, y } = snapToGridPosition(worldPos.x, worldPos.y)
+    const snappedPos = snapToGridPosition(worldPos.x, worldPos.y)
+    
+    // Find a valid position that doesn't overlap with existing components
+    const { x, y } = findValidPosition(snappedPos.x, snappedPos.y)
     
     // Add new gate
     const newGate: LogicGate = {
@@ -1156,7 +1228,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     setMousePosition({ x: screenX, y: screenY })
     
     // Handle panning
-    if (isPanning) {
+    if (isPanning && enablePan) {
       const deltaX = e.clientX - panStart.x
       const deltaY = e.clientY - panStart.y
       setPan({
@@ -1184,11 +1256,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       const worldPos = screenToWorld(screenX - dragOffset.x, screenY - dragOffset.y)
       
       // Snap to grid if enabled
-      const { x: newX, y: newY } = snapToGridPosition(worldPos.x, worldPos.y)
+      const snappedPos = snapToGridPosition(worldPos.x, worldPos.y)
       
+      // Allow dragging to any position during drag (visual feedback)
       setGates(gates.map(gate => 
         gate.id === draggingGate 
-          ? { ...gate, x: newX, y: newY }
+          ? { ...gate, x: snappedPos.x, y: snappedPos.y }
           : gate
       ))
     }
@@ -1241,6 +1314,21 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
 
   const handleMouseUp = () => {
     if (draggingGate && hasDragged) {
+      // Check if the current position overlaps with other gates
+      const draggedGate = gates.find(g => g.id === draggingGate)
+      if (draggedGate) {
+        const validPos = findValidPosition(draggedGate.x, draggedGate.y, draggingGate)
+        
+        // If the position needs adjustment, update to valid position
+        if (validPos.x !== draggedGate.x || validPos.y !== draggedGate.y) {
+          setGates(gates.map(gate => 
+            gate.id === draggingGate 
+              ? { ...gate, x: validPos.x, y: validPos.y }
+              : gate
+          ))
+        }
+      }
+      
       // Save to history after moving a gate
       setTimeout(() => saveToHistory(), 0)
     }
@@ -2961,7 +3049,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         onClick={handleWorkspaceClick}
         onMouseDown={(e) => {
           // Start panning with middle mouse button or space+left click
-          if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+          if (enablePan && (e.button === 1 || (e.button === 0 && e.shiftKey))) {
             e.preventDefault()
             setIsPanning(true)
             setPanStart({ x: e.clientX, y: e.clientY })
@@ -3280,6 +3368,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                           ? 'border-cosmic-aurora bg-cosmic-aurora/20'
                           : gate.inputs.input1
                           ? 'border-green-400 bg-green-400'
+                          : showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
+                          : connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
                           : 'border-white/40 bg-cosmic-void hover:border-white'
                       }`}
                       style={{
@@ -3321,6 +3413,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       className={`absolute left-0 top-1/3 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer transition-all duration-300 ${
                         gate.inputs.input1
                           ? 'border-emerald-400/60 bg-emerald-400/20 shadow-sm shadow-emerald-400/20'
+                          : showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
+                          : connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
                           : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
                       }`}
                       style={{
@@ -3328,7 +3424,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         height: 20 * zoom + 'px',
                         borderWidth: zoom + 'px',
                         borderStyle: 'solid',
-                        boxShadow: connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : gate.inputs.input1 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
+                        boxShadow: showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` : 
+                                  connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` :
+                                  connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : 
+                                  gate.inputs.input1 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -3339,6 +3438,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       className={`absolute left-0 top-2/3 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer transition-all duration-300 ${
                         gate.inputs.input2
                           ? 'border-emerald-400/60 bg-emerald-400/20 shadow-sm shadow-emerald-400/20'
+                          : showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
+                          : connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2')
+                          ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
                           : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
                       }`}
                       style={{
@@ -3346,7 +3449,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         height: 20 * zoom + 'px',
                         borderWidth: zoom + 'px',
                         borderStyle: 'solid',
-                        boxShadow: connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : gate.inputs.input2 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
+                        boxShadow: showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` : 
+                                  connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` :
+                                  connections.some(c => c.to.gateId === gate.id && c.to.point === 'input2') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : 
+                                  gate.inputs.input2 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -3359,6 +3465,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     className={`absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer transition-all duration-300 ${
                       gate.inputs.input1
                         ? 'border-emerald-400/60 bg-emerald-400/20 shadow-sm shadow-emerald-400/20'
+                        : showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                        ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
+                        : connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1')
+                        ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
                         : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
                     }`}
                     style={{
@@ -3366,7 +3476,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       height: 20 * zoom + 'px',
                       borderWidth: zoom + 'px',
                       borderStyle: 'solid',
-                      boxShadow: connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : gate.inputs.input1 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
+                      boxShadow: showWiringHelp && !connectingFrom && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` : 
+                                connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point === 'output' && !connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` :
+                                connections.some(c => c.to.gateId === gate.id && c.to.point === 'input1') ? `0 0 ${6*zoom}px rgba(34, 211, 238, 0.2)` : 
+                                gate.inputs.input1 ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
                     }}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -3380,6 +3493,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     className={`absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer transition-all duration-300 ${
                       gate.output
                         ? 'border-emerald-400/60 bg-emerald-400/20 shadow-sm shadow-emerald-400/20'
+                        : showWiringHelp && !connectingFrom
+                        ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
+                        : connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point !== 'output'
+                        ? 'border-white bg-white/30 animate-pulse shadow-lg shadow-white/50'
                         : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
                     }`}
                     style={{
@@ -3387,7 +3504,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       height: 20 * zoom + 'px',
                       borderWidth: zoom + 'px',
                       borderStyle: 'solid',
-                      boxShadow: gate.output ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
+                      boxShadow: showWiringHelp && !connectingFrom ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` : 
+                                connectingFrom && connectingFrom.gateId !== gate.id && connectingFrom.point !== 'output' ? `0 0 ${12*zoom}px rgba(255, 255, 255, 0.5)` :
+                                gate.output ? `0 0 ${6*zoom}px rgba(52, 211, 153, 0.2)` : 'none'
                     }}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -3416,6 +3535,30 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             />
           </div>
         )}
+        
+        {/* Wiring Helper Text */}
+        <AnimatePresence>
+          {showWiringHelp && wiringHelpText && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <m.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-3"
+              >
+                <m.p
+                  className="text-xl font-medium text-white/90 tracking-wide"
+                  style={{
+                    textShadow: '0 0 20px rgba(192, 132, 252, 0.8)'
+                  }}
+                >
+                  {wiringHelpText}
+                </m.p>
+              </m.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
       {showStateTable && (
@@ -3620,7 +3763,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
-                Generate
+                Current Equation
               </button>
               <button
                 onClick={() => setEquationMode('parse')}
@@ -3630,7 +3773,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
-                Parse
+                Generate
               </button>
             </div>
             
@@ -3722,8 +3865,52 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                   <div className="relative">
                     <textarea
                       value={equationInput}
-                      onChange={(e) => setEquationInput(e.target.value)}
-                      placeholder="Y = A ∧ B ∨ ¬C"
+                      onChange={(e) => {
+                        let value = e.target.value
+                        const prevValue = equationInput
+                        const prefix = 'Out1 = '
+                        
+                        // Prevent removing the "Out1 = " prefix
+                        if (!value.startsWith(prefix)) {
+                          if (value.length < prefix.length) {
+                            value = prefix
+                          } else {
+                            // User might have accidentally deleted part of prefix
+                            value = prefix + value.substring(value.indexOf('=') + 1).trim()
+                          }
+                        }
+                        
+                        // Check if user just typed an opening bracket
+                        if (value.length > prevValue.length && value[value.length - 1] === '(') {
+                          // Auto-insert closing bracket
+                          const cursorPos = e.target.selectionStart
+                          value = value + ')'
+                          // Set cursor position between the brackets
+                          setTimeout(() => {
+                            e.target.setSelectionRange(cursorPos, cursorPos)
+                          }, 0)
+                        }
+                        
+                        setEquationInput(value)
+                        
+                        // Auto-bracketing suggestion for unclosed brackets
+                        const openCount = (value.match(/\(/g) || []).length
+                        const closeCount = (value.match(/\)/g) || []).length
+                        if (openCount > closeCount) {
+                          setBracketSuggestion(')'.repeat(openCount - closeCount))
+                        } else {
+                          setBracketSuggestion('')
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Auto-complete brackets when pressing Tab or Enter
+                        if ((e.key === 'Tab' || e.key === 'Enter') && bracketSuggestion) {
+                          e.preventDefault()
+                          setEquationInput(equationInput + bracketSuggestion)
+                          setBracketSuggestion('')
+                        }
+                      }}
+                      placeholder="A ∧ B ∨ ¬C"
                       className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none transition-colors font-mono text-sm ${
                         syntaxError 
                           ? 'border-red-500/50 focus:border-red-500/70' 
@@ -3737,6 +3924,114 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       </span>
                     )}
                   </div>
+                  
+                  {/* Gate Symbol Buttons */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    <button
+                      onClick={() => {
+                        const prefix = 'Out1 = '
+                        if (equationInput === prefix) {
+                          setEquationInput(equationInput + '∧')
+                        } else {
+                          setEquationInput(equationInput + ' ∧ ')
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="AND"
+                    >
+                      ∧ AND
+                    </button>
+                    <button
+                      onClick={() => {
+                        const prefix = 'Out1 = '
+                        if (equationInput === prefix) {
+                          setEquationInput(equationInput + '∨')
+                        } else {
+                          setEquationInput(equationInput + ' ∨ ')
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="OR"
+                    >
+                      ∨ OR
+                    </button>
+                    <button
+                      onClick={() => setEquationInput(equationInput + '¬')}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="NOT"
+                    >
+                      ¬ NOT
+                    </button>
+                    <button
+                      onClick={() => {
+                        const prefix = 'Out1 = '
+                        if (equationInput === prefix) {
+                          setEquationInput(equationInput + '⊕')
+                        } else {
+                          setEquationInput(equationInput + ' ⊕ ')
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="XOR"
+                    >
+                      ⊕ XOR
+                    </button>
+                    <button
+                      onClick={() => {
+                        const prefix = 'Out1 = '
+                        if (equationInput === prefix) {
+                          setEquationInput(equationInput + '↑')
+                        } else {
+                          setEquationInput(equationInput + ' ↑ ')
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="NAND"
+                    >
+                      ↑ NAND
+                    </button>
+                    <button
+                      onClick={() => {
+                        const prefix = 'Out1 = '
+                        if (equationInput === prefix) {
+                          setEquationInput(equationInput + '↓')
+                        } else {
+                          setEquationInput(equationInput + ' ↓ ')
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="NOR"
+                    >
+                      ↓ NOR
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Auto-complete brackets when clicking the button
+                        setEquationInput(equationInput + '()')
+                        // Focus the textarea and position cursor between brackets
+                        const textarea = document.querySelector('textarea')
+                        if (textarea) {
+                          textarea.focus()
+                          const pos = equationInput.length + 1
+                          setTimeout(() => {
+                            (textarea as HTMLTextAreaElement).setSelectionRange(pos, pos)
+                          }, 0)
+                        }
+                      }}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="Open Bracket (auto-completes)"
+                    >
+                      ( )
+                    </button>
+                    <button
+                      onClick={() => setEquationInput(equationInput + ')')}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded text-white text-xs font-mono transition-all"
+                      title="Close Bracket"
+                    >
+                      )
+                    </button>
+                  </div>
+                  
                   {syntaxError && (
                     <div className="mt-1 text-red-400 text-xs flex items-start gap-1">
                       <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
@@ -3952,8 +4247,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       )}
       
       {/* Zoom Controls */}
-      <div className="absolute top-28 right-4 z-20">
-        <div className="bg-cosmic-void/90 backdrop-blur-xl rounded-xl p-2 border border-white/10 flex flex-col gap-2">
+      {enableZoom && (
+        <div className="absolute top-28 right-4 z-20">
+          <div className="bg-cosmic-void/90 backdrop-blur-xl rounded-xl p-2 border border-white/10 flex flex-col gap-2">
           <button
             onClick={() => {
               const rect = workspaceRef.current!.getBoundingClientRect()
@@ -4016,14 +4312,17 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           </div>
         </div>
       </div>
+      )}
       
       {/* Pan Instructions */}
-      <div className="absolute bottom-4 left-4 z-20">
-        <div className="text-xs text-white/40 bg-cosmic-void/80 backdrop-blur-xl rounded-lg px-3 py-2 border border-white/5">
-          <div>Shift+Drag or Middle Mouse to pan</div>
-          <div>Scroll to zoom</div>
+      {(enableZoom || enablePan) && (
+        <div className="absolute bottom-4 left-4 z-20">
+          <div className="text-xs text-white/40 bg-cosmic-void/80 backdrop-blur-xl rounded-lg px-3 py-2 border border-white/5">
+            {enablePan && <div>Shift+Drag or Middle Mouse to pan</div>}
+            {enableZoom && <div>Scroll to zoom</div>}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 })

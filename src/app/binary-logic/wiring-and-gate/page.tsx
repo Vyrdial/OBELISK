@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import CosmicBackground from '@/components/effects/CosmicBackground'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, Zap, CheckCircle, Binary } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, Zap, CheckCircle, Binary, ChevronRight } from 'lucide-react'
 import { m, AnimatePresence } from 'framer-motion'
 
 function WiringGatesContent() {
@@ -17,6 +17,10 @@ function WiringGatesContent() {
   const [objective, setObjective] = useState("Let's wire an AND gate circuit!")
   const [showToolArrow, setShowToolArrow] = useState(false)
   const [toolsIntroduced, setToolsIntroduced] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
+  const [showWiringHelp, setShowWiringHelp] = useState(false)
+  const [wiringHelpText, setWiringHelpText] = useState('')
+  const [lastConnectionCount, setLastConnectionCount] = useState(0)
 
   // Start the tutorial immediately
   useEffect(() => {
@@ -51,6 +55,17 @@ function WiringGatesContent() {
         // All components placed
         if (connections.length === 0) {
           setObjective("Now wire them together!")
+          setShowWiringHelp(true)
+          setWiringHelpText('Click to start a wire')
+        } else if (connections.length > lastConnectionCount) {
+          // A new connection was made
+          setWiringHelpText('Well done, keep going!')
+          setLastConnectionCount(connections.length)
+          setTimeout(() => {
+            // Fade out the helper text after showing "Well done"
+            setShowWiringHelp(false)
+            setWiringHelpText('')
+          }, 1500)
         }
       } else {
         // Some components placed, figure out what's missing
@@ -96,6 +111,7 @@ function WiringGatesContent() {
       if (switchToAnd.length === 2 && andToOutput.length === 1 && !circuitWired) {
         setCircuitWired(true)
         setObjective("Turn on both switches!")
+        setShowWiringHelp(false)
       }
       
       // Check if switches are on and circuit is complete
@@ -163,6 +179,74 @@ function WiringGatesContent() {
         )}
       </AnimatePresence>
       
+      {/* Click Instruction Overlay */}
+      <AnimatePresence>
+        {objective === "Place your components!" && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+          >
+            <div className="flex flex-col items-center gap-4">
+              {/* Mouse icon with click animation */}
+              <m.div
+                animate={{ scale: [1, 0.9, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="relative"
+              >
+                <svg 
+                  width="60" 
+                  height="80" 
+                  viewBox="0 0 60 80" 
+                  className="drop-shadow-[0_0_20px_rgba(192,132,252,0.6)]"
+                >
+                  {/* Mouse body */}
+                  <rect 
+                    x="10" 
+                    y="20" 
+                    width="40" 
+                    height="50" 
+                    rx="20" 
+                    fill="none" 
+                    stroke="white" 
+                    strokeWidth="3"
+                  />
+                  {/* Mouse wheel */}
+                  <rect 
+                    x="28" 
+                    y="30" 
+                    width="4" 
+                    height="10" 
+                    rx="2" 
+                    fill="white"
+                  />
+                  {/* Click indicator - left button pressed */}
+                  <m.path
+                    d="M 10 40 L 30 40 L 30 20 Q 10 20 10 40"
+                    fill="rgba(192, 132, 252, 0.8)"
+                    animate={{ opacity: [0, 1, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                </svg>
+              </m.div>
+              
+              {/* Text instruction */}
+              <m.p
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-xl font-medium text-white/90 tracking-wide"
+                style={{
+                  textShadow: '0 0 20px rgba(192, 132, 252, 0.8)'
+                }}
+              >
+                Click anywhere to place
+              </m.p>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
       
       {/* Completion Message */}
       {puzzleComplete && (
@@ -172,12 +256,27 @@ function WiringGatesContent() {
           className="fixed bottom-6 left-6 right-6 z-30 max-w-4xl mx-auto"
         >
           <div className="bg-green-500/20 backdrop-blur-xl border border-green-500 rounded-2xl p-6">
-            <div className="flex items-center gap-4">
-              <CheckCircle className="w-12 h-12 text-green-400" />
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-2">Circuit Complete!</h3>
-                <p className="text-white/80">You've successfully wired your first logic gate!</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <CheckCircle className="w-12 h-12 text-green-400" />
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Circuit Complete!</h3>
+                  <p className="text-white/80">You've successfully wired your first logic gate!</p>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  if (!isNavigating) {
+                    setIsNavigating(true)
+                    router.push('/binary-logic/wiring-not-gate')
+                  }
+                }}
+                disabled={isNavigating}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500/80 to-indigo-500/80 text-white font-semibold rounded-xl hover:from-purple-600/80 hover:to-indigo-600/80 transition-all duration-500 ease-out shadow-lg hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 backdrop-blur-sm"
+              >
+                Next Puzzle
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </m.div>
@@ -193,6 +292,15 @@ function WiringGatesContent() {
           onCircuitUpdate={handleCircuitUpdate}
           objective={objective}
           puzzleComplete={puzzleComplete}
+          enableZoom={false}
+          enablePan={false}
+          showWiringHelp={showWiringHelp}
+          wiringHelpText={wiringHelpText}
+          onConnectionStateChange={(isConnecting) => {
+            if (showWiringHelp && isConnecting) {
+              setWiringHelpText('Click to end the wire')
+            }
+          }}
         />
       </div>
     </div>

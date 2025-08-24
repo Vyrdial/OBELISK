@@ -9,6 +9,7 @@ import MassVisualization from '@/components/mass/MassVisualization'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import { useProfile } from '@/hooks/useProfile'
 import { useMassSystem } from '@/hooks/useMassSystem'
+import { useStardustAnimation } from '@/contexts/StardustAnimationContext'
 
 const navigationItems = [
   {
@@ -48,6 +49,7 @@ export default function TopNavigationBar() {
   const pathname = usePathname()
   const { profile, loading: profileLoading } = useProfile()
   const massSystem = useMassSystem()
+  const { displayStardust } = useStardustAnimation()
   
   // Prevent hydration flicker by showing loading state
   const [isClient, setIsClient] = useState(false)
@@ -161,7 +163,7 @@ export default function TopNavigationBar() {
         <div className="flex items-center gap-4 ml-auto">
           {isClient ? (
             <StardustCounter 
-              count={profile?.stardust ?? 0} 
+              count={displayStardust} 
               size="md" 
               clickable={true}
               onClick={() => router.push('/stardust')}

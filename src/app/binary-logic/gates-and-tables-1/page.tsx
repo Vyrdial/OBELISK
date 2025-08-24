@@ -516,6 +516,11 @@ function LogicGatesLessonContent() {
         speaker: 'Byte',
         text: "It's like a light switch - whatever goes in, the opposite comes out!",
         animation: 'point'
+      },
+      {
+        speaker: 'Byte',
+        text: "Notice something special? NOT gates only take ONE input! They're the only gate that works with a single signal.",
+        animation: 'thinking'
       }
     ],
     'slide-5': [

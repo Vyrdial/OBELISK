@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useProfile } from '@/hooks/useProfile'
 import { useUnlockedConcepts } from '@/hooks/useUnlockedConcepts'
-import { useLessonCompletion, getStardustCounterPosition } from '@/hooks/useLessonCompletion'
 import { m, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Award, Sparkles, Clock, Brain, ArrowRight, BookOpen, X, Binary, Circle, Square, CheckCircle2, Zap, ToggleLeft, ToggleRight, Power, Star } from 'lucide-react'
 import { dictionaryService } from '@/lib/dictionaryService'
@@ -465,7 +464,9 @@ function OnOffLesson() {
   const router = useRouter()
   const { profile, addStardust } = useProfile()
   const { unlockConcept } = useUnlockedConcepts()
-  const { isCompleted, completeLesson } = useLessonCompletion('on-off')
+  // Lesson completion will be reimplemented
+  const isCompleted = false
+  const completeLesson = async (stardust: number) => ({ success: true, stardustEarned: stardust })
   const [currentPhase, setCurrentPhase] = useState<LessonPhase>('slide-1')
   const [currentDialogIndex, setCurrentDialogIndex] = useState(0)
   const [showCompletionScreen, setShowCompletionScreen] = useState(false)
@@ -682,7 +683,8 @@ function OnOffLesson() {
   // Calculate stardust counter position
   useEffect(() => {
     const calculateStardustPosition = () => {
-      stardustTargetRef.current = getStardustCounterPosition()
+      // Stardust animation target will be reimplemented
+      stardustTargetRef.current = { x: window.innerWidth - 100, y: 50 }
     }
     
     calculateStardustPosition()

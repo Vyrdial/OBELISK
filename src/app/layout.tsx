@@ -9,6 +9,7 @@ import { HydrationProvider } from "@/components/hydration/HydrationProvider";
 import LazyMotion from "@/components/hydration/LazyMotion";
 import CosmicCompanion from "@/components/ui/CosmicCompanion";
 import DebugMenu from "@/components/debug/DebugMenu";
+import { StardustAnimationProvider } from "@/contexts/StardustAnimationContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -66,15 +67,17 @@ export default function RootLayout({
         <HydrationProvider totalComponents={20}>
           <LazyMotion>
             <ClientOnlyAuthProvider>
-              <div className="relative z-10">
-                {children}
-              </div>
-              <ClientOnly>
-                <CosmicCompanion />
-              </ClientOnly>
-              <ClientOnly>
-                <DebugMenu />
-              </ClientOnly>
+              <StardustAnimationProvider>
+                <div className="relative z-10">
+                  {children}
+                </div>
+                <ClientOnly>
+                  <CosmicCompanion />
+                </ClientOnly>
+                <ClientOnly>
+                  <DebugMenu />
+                </ClientOnly>
+              </StardustAnimationProvider>
             </ClientOnlyAuthProvider>
           </LazyMotion>
         </HydrationProvider>

@@ -610,7 +610,7 @@ function HomeContent() {
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="glass-morphism rounded-2xl p-6 border border-white/10"
+                className="glass-morphism rounded-2xl p-6 border border-white/10 relative"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Learning Momentum</h3>
@@ -641,14 +641,23 @@ function HomeContent() {
                     <span className="text-sm font-semibold text-green-400">+23% 📈</span>
                   </div>
                 </div>
+                
+                {/* Coming Soon Section */}
+                {/* Coming Soon Banner */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">🚧</div>
+                    <p className="text-sm font-semibold text-amber-400">Coming Soon</p>
+                    <p className="text-xs text-white/50">Under construction - New features arriving!</p>
+                  </div>
+                </div>
               </m.div>
 
               {/* Concept Map Progress */}
               <m.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="glass-morphism rounded-2xl p-6 border border-white/10"
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-morphism rounded-2xl p-6 border border-white/10 relative"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Concept Mastery</h3>
@@ -685,6 +694,15 @@ function HomeContent() {
                 >
                   View full concept map →
                 </button>
+                
+                {/* Coming Soon Banner */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">🚧</div>
+                    <p className="text-sm font-semibold text-amber-400">Coming Soon</p>
+                    <p className="text-xs text-white/50">Under construction - New features arriving!</p>
+                  </div>
+                </div>
               </m.div>
 
               {/* Smart Recommendations */}
@@ -692,10 +710,10 @@ function HomeContent() {
                 initial={{ opacity: 0, x: 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="glass-morphism rounded-2xl p-6 border border-white/10"
+                className="glass-morphism rounded-2xl p-6 border border-white/10 relative"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Recommended Next</h3>
+                  <h3 className="text-lg font-semibold text-white">Recommended Lessons</h3>
                   <Compass className="w-5 h-5 text-purple-400" />
                 </div>
                 
@@ -731,6 +749,15 @@ function HomeContent() {
                 
                 <div className="mt-4 pt-4 border-t border-white/10">
                   <p className="text-xs text-white/50">Based on your learning patterns</p>
+                </div>
+                
+                {/* Coming Soon Banner */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">🚧</div>
+                    <p className="text-sm font-semibold text-amber-400">Coming Soon</p>
+                    <p className="text-xs text-white/50">Under construction - New features arriving!</p>
+                  </div>
                 </div>
               </m.div>
             </div>

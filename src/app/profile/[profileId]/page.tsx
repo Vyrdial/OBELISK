@@ -29,7 +29,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 
 type TabType = 'profile' | 'friends' | 'treasures' | 'customize' | 'settings'
-type CustomizeSubTab = 'style' | 'face' | 'aura' | 'title' | 'crown'
+type CustomizeSubTab = 'style' | 'face' | 'aura' | 'crown'
 type RarityFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary'
 
 const mockFriends = [
@@ -74,6 +74,7 @@ const cosmeticItems = {
     { id: 'plasma-core', name: 'Plasma Core', description: 'Chaotic plasma energy vibrates with unstable force', rarity: 'legendary' as const }
   ],
   faces: [
+    { id: 'none', name: 'No Face', description: 'Pure singularity, no expression', rarity: 'common' as const, alwaysOwned: true },
     { id: 'happy-face', name: 'Happy Face', description: 'A cheerful expression that radiates positivity', rarity: 'common' as const },
     { id: 'cool-face', name: 'Cool Face', description: 'Too cool for the cosmic school', rarity: 'rare' as const },
     { id: 'starry-eyes', name: 'Starry Eyes', description: 'Eyes filled with cosmic wonder', rarity: 'rare' as const },
@@ -95,11 +96,6 @@ const cosmeticItems = {
     { id: 'rainbow-prism', name: 'Rainbow Prism', description: 'Prismatic light spectrum', rarity: 'legendary' as const },
     { id: 'plasma-storm', name: 'Plasma Storm', description: 'Chaotic electrical energy', rarity: 'legendary' as const }
   ],
-  titles: [
-    { id: 'null-seeker', name: 'Null Seeker', description: 'For those who understand the void', rarity: 'common' as const },
-    { id: 'systems-sage', name: 'Systems Sage', description: 'Master of interconnected knowledge', rarity: 'rare' as const },
-    { id: 'cosmic-architect', name: 'Cosmic Architect', description: 'Builder of universal understanding', rarity: 'legendary' as const }
-  ],
   crowns: [
     { id: 'premium-crown', name: 'Premium Crown', description: 'Exclusive golden crown for premium members', rarity: 'legendary' as const, premiumOnly: true }
   ]
@@ -108,7 +104,6 @@ const cosmeticItems = {
 const featuredAchievements = [
   { id: 'voltaic-surge', name: 'Voltaic Surge', description: 'Electric storm energy mastered', rarity: 'epic', type: 'style' },
   { id: 'plasma-storm', name: 'Plasma Storm', description: 'Chaotic plasma energy unleashed', rarity: 'legendary', type: 'style' },
-  { id: 'null-seeker', name: 'Null Seeker', description: 'For those who understand the void', rarity: 'rare', type: 'title' },
   { id: 'void-essence', name: 'Void Essence', description: 'Mysterious dark singularity conquered', rarity: 'legendary', type: 'style' }
 ]
 
@@ -160,10 +155,6 @@ function ProfileSettingsContent() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
-  const [nameChangeInfo, setNameChangeInfo] = useState<{
-    remaining: number
-    nextReset: Date | null
-  }>({ remaining: 2, nextReset: null })
   const [isPremium, setIsPremium] = useState(false)
   const [equipKey, setEquipKey] = useState(0)
   const [formData, setFormData] = useState({
@@ -392,13 +383,6 @@ function ProfileSettingsContent() {
     }
   }, [profile])
 
-  // Check name change rate limit
-  useEffect(() => {
-    // Temporarily disable name change limit check until table is created
-    // TODO: Re-enable once display_name_changes table is set up
-    setNameChangeInfo({ remaining: 2, nextReset: null })
-  }, [user?.id])
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -425,13 +409,8 @@ function ProfileSettingsContent() {
       return
     }
     
-    // Check rate limit if display name changed
+    // Check if display name changed
     if (displayNameChanged) {
-      if (nameChangeInfo.remaining === 0) {
-        alert(`You've used all your display name changes. Next change available: ${nameChangeInfo.nextReset?.toLocaleDateString() || 'Unknown'}`)
-        return
-      }
-      
       setIsSaving(true)
       
       try {
@@ -449,14 +428,6 @@ function ProfileSettingsContent() {
           setIsSaving(false)
           return
         }
-        
-        // Record the name change
-        await supabase.from('display_name_changes').insert({
-          user_id: user.id,
-          old_name: profile?.display_name || '',
-          new_name: formData.display_name,
-          changed_at: new Date().toISOString()
-        })
       } catch (error) {
         console.error('Error checking name safety:', error)
         alert('Failed to verify name safety. Please try again.')
@@ -473,14 +444,6 @@ function ProfileSettingsContent() {
       })
       await refreshProfile()
       setIsEditing(false)
-      
-      // Refresh name change info
-      if (displayNameChanged) {
-        setNameChangeInfo(prev => ({
-          remaining: Math.max(0, prev.remaining - 1),
-          nextReset: prev.nextReset || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        }))
-      }
     } catch (error) {
       console.error('Error updating profile:', error)
       alert('Failed to update profile. Please try again.')
@@ -1359,7 +1322,6 @@ function ProfileSettingsContent() {
                           { id: 'style' as CustomizeSubTab, name: 'Style', icon: Circle },
                           { id: 'face' as CustomizeSubTab, name: 'Face', icon: Smile },
                           { id: 'aura' as CustomizeSubTab, name: 'Aura', icon: Layers },
-                          { id: 'title' as CustomizeSubTab, name: 'Title', icon: Type },
                           { id: 'crown' as CustomizeSubTab, name: 'Accessories', icon: Crown }
                         ].map((subTab) => (
                           <m.button
@@ -1753,78 +1715,6 @@ function ProfileSettingsContent() {
                         </div>
                       )}
 
-                      {activeCustomizeTab === 'title' && (
-                        <div className="px-12">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {filterByRarity(cosmeticItems.titles
-                              .filter(title => isOwned(title.id)))
-                              .map((title) => {
-                                const equipped = isEquipped(title.id, 'title')
-                                
-                                return (
-                                  <m.div
-                                    key={title.id}
-                                    onClick={async () => {
-                                      if (!equipped) {
-                                        await equipCosmetic(title.id, 'title')
-                                        setEquipKey(prev => prev + 1)
-                                      }
-                                    }}
-                                    whileHover={{ y: -5 }}
-                                    transition={{ duration: 0.03, ease: "easeOut" }}
-                                    className={`relative bg-black/40 border-2 rounded-xl p-4 hover:shadow-lg transition-all cursor-pointer ${
-                                      equipped ? 'border-green-500 bg-green-500/10' : 
-                                      `border-${title.rarity === 'legendary' ? 'yellow' : title.rarity === 'epic' ? 'purple' : title.rarity === 'rare' ? 'blue' : 'gray'}-500/50`
-                                    }`}
-                                  >
-                                    <div className="flex justify-center mb-4">
-                                      <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/20 flex items-center justify-center">
-                                        <Type className={`w-8 h-8 text-${getAuraSingleColor(equippedAura)}`} />
-                                      </div>
-                                    </div>
-                                    {/* Rarity tag - top left */}
-                                    <div className="absolute top-2 left-2">
-                                      <span className={`px-3 py-1.5 rounded-full text-sm font-semibold border bg-black/80 ${
-                                        title.rarity === 'legendary' ? 'border-yellow-400 text-yellow-400' :
-                                        title.rarity === 'epic' ? 'border-purple-400 text-purple-400' :
-                                        title.rarity === 'rare' ? 'border-blue-400 text-blue-400' :
-                                        'border-gray-400 text-gray-400'
-                                      }`}>
-                                        {title.rarity.toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <div className="text-center">
-                                      <h4 className="text-white font-semibold text-xl mb-2">{title.name}</h4>
-                                      <p className="text-white/60 text-sm mb-3">{title.description}</p>
-                                      {equipped && (
-                                        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-green-500/90 rounded-full">
-                                          <Sparkles className="w-3 h-3 text-white" />
-                                          <span className="text-xs font-medium text-white">Equipped</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </m.div>
-                                )
-                              })}
-                          </div>
-                          {cosmeticItems.titles.filter(title => isOwned(title.id)).length === 0 && (
-                            <div className="text-center py-12">
-                              <Type className="w-16 h-16 mx-auto mb-4 text-white/30" />
-                              <p className="text-white/60 mb-4">You don't own any custom titles yet!</p>
-                            </div>
-                          )}
-                          <div className="text-center mt-8">
-                            <m.button
-                              onClick={() => router.push('/shop')}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              className="bg-gradient-to-r from-purple-400 to-purple-500 text-white px-6 py-3 rounded-lg font-medium"
-                            >
-                              Visit Shop for Titles
-                            </m.button>
-                          </div>
-                        </div>
-                      )}
 
                       {activeCustomizeTab === 'crown' && (
                         <div className="px-12">
@@ -2020,7 +1910,7 @@ function ProfileSettingsContent() {
                       Display Name
                       {isEditing && (
                         <span className="text-xs text-white/50 ml-2">
-                          ({formData.display_name.length}/20 chars • {nameChangeInfo.remaining} changes left this week)
+                          ({formData.display_name.length}/20 chars)
                         </span>
                       )}
                     </label>
@@ -2043,11 +1933,6 @@ function ProfileSettingsContent() {
                         <p className="text-xs text-white/40 mt-1">
                           Allowed: letters, numbers, spaces, underscores (_) and periods (.)
                         </p>
-                        {nameChangeInfo.remaining === 0 && (
-                          <p className="text-xs text-red-400 mt-1">
-                            No name changes remaining. Resets {nameChangeInfo.nextReset?.toLocaleDateString()}
-                          </p>
-                        )}
                       </div>
                     ) : (
                       <div className="px-4 py-3 bg-white/5 rounded-lg text-white font-medium">
