@@ -5,12 +5,14 @@ import { m, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, MousePointer2, X, Table, Calculator, FileText, Copy, Check, Trash, Play, Pause, SkipForward, Gauge, AlertCircle, ChevronRight, Grid, Save, FolderOpen, Share2, Download, Upload, ChevronDown, ZoomIn, ZoomOut, Maximize2, RotateCcw, Lock, Binary } from 'lucide-react'
 
 // Types
-type GateType = 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'NOR' | 'SWITCH' | 'OUTPUT'
+type GateType = 'AND' | 'OR' | 'NOT' | 'XOR' | 'XNOR' | 'NAND' | 'NOR' | 'SEL' | 'INH' | 'SWITCH' | 'OUTPUT'
 type ConnectionPoint = 'input1' | 'input2' | 'output'
+type GateSubtype = 'SELA' | 'SELB' | 'INHA' | 'INHB'
 
 interface LogicGate {
   id: string
   type: GateType
+  subtype?: GateSubtype
   x: number
   y: number
   inputs: { input1?: boolean; input2?: boolean }
@@ -176,6 +178,14 @@ const GATE_CONFIG = {
     logic: (a: boolean, b: boolean) => a !== b,
     inputs: 2
   },
+  XNOR: { 
+    symbol: 'XNOR', 
+    color: 'from-indigo-500/20 to-indigo-600/20',
+    borderColor: 'border-indigo-500/50',
+    glowColor: 'indigo',
+    logic: (a: boolean, b: boolean) => a === b,
+    inputs: 2
+  },
   NAND: { 
     symbol: 'NAND', 
     color: 'from-green-500/20 to-green-600/20',
@@ -190,6 +200,34 @@ const GATE_CONFIG = {
     borderColor: 'border-orange-500/50',
     glowColor: 'orange',
     logic: (a: boolean, b: boolean) => !(a || b),
+    inputs: 2
+  },
+  SEL: { 
+    symbol: 'SEL', 
+    color: 'from-cyan-500/20 to-cyan-600/20',
+    borderColor: 'border-cyan-500/50',
+    glowColor: 'cyan',
+    logic: (a: boolean, b: boolean, subtype?: GateSubtype) => {
+      // SELA: 0100 - true only when A is true and B is false
+      // SELB: 0010 - true only when B is true and A is false
+      if (subtype === 'SELA') return a && !b;
+      if (subtype === 'SELB') return !a && b;
+      return a && !b; // Default to SELA behavior
+    },
+    inputs: 2
+  },
+  INH: { 
+    symbol: 'INH', 
+    color: 'from-pink-500/20 to-pink-600/20',
+    borderColor: 'border-pink-500/50',
+    glowColor: 'pink',
+    logic: (a: boolean, b: boolean, subtype?: GateSubtype) => {
+      // INHA: Inhibit A when B is true (A AND NOT B)
+      // INHB: Inhibit B when A is true (NOT A AND B)
+      if (subtype === 'INHA') return a && !b;
+      if (subtype === 'INHB') return !a && b;
+      return a && !b; // Default to INHA behavior
+    },
     inputs: 2
   },
   SWITCH: {
@@ -248,7 +286,7 @@ interface LogicGateWorkspaceProps {
 }
 
 const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({ 
-  availableGates = ['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'SWITCH', 'OUTPUT'],
+  availableGates = ['AND', 'OR', 'NOT', 'XOR', 'XNOR', 'NAND', 'NOR', 'SEL', 'INH', 'SWITCH', 'OUTPUT'],
   enableFileOperations = true,
   componentLimits,
   onCircuitUpdate,
@@ -261,6 +299,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   wiringHelpText = '',
   onConnectionStateChange
 }: LogicGateWorkspaceProps = {}, ref) => {
+  // Check if we're in puzzle mode (limited gates available)
+  const isPuzzleMode = availableGates && availableGates.length < 8; // Full workspace has 8+ gate types
+  
   const [gates, setGates] = useState<LogicGate[]>(initialGates)
   const [connections, setConnections] = useState<Connection[]>([])
   const [selectedGate, setSelectedGate] = useState<string | null>(null)
@@ -600,7 +641,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   }, [connectingFrom, onConnectionStateChange])
 
   // Initialize stepwise mode with selected switch states
-  const initializeStepwise = useCallback((preserveStep = false) => {
+  const initializeStepwise = useCallback((preserveStep = false, overrideSwitchStates?: Record<string, boolean>) => {
     // Reset all gate states
     const initialStates: Record<string, { 
       inputs: Record<string, boolean>, 
@@ -611,64 +652,144 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     // Build propagation queue
     const queue: Array<Array<{ type: 'wire' | 'gate', id: string, from?: string, to?: string, value?: boolean }>> = []
     
-    // First, collect all switches that are ON
-    const activeSwitches: Array<{ type: 'wire' | 'gate', id: string, from?: string, to?: string, value?: boolean }> = []
-    
+    // First pass: Initialize all gates with default states
     gates.forEach(gate => {
       if (gate.type === 'SWITCH') {
-        const switchValue = stepwiseSwitchStates[gate.id] || false
+        // Use override if provided, then stepwise state, then gate's current output
+        const switchValue = overrideSwitchStates?.[gate.id] ?? stepwiseSwitchStates[gate.id] ?? gate.output
         initialStates[gate.id] = { 
           inputs: {}, 
           output: switchValue,
           inputsReceived: new Set()
         }
-        
-        // If switch is ON, add it to first frame for illumination
-        if (switchValue) {
-          activeSwitches.push({
-            type: 'gate',
-            id: gate.id,
-            value: switchValue
-          })
-        }
       } else {
-        // Initialize other gates
+        // Initialize other gates with default inputs
         initialStates[gate.id] = { 
           inputs: gate.type === 'NOT' || gate.type === 'OUTPUT' 
             ? { input1: false } 
             : { input1: false, input2: false }, 
-          output: false,
+          output: false,  // Will be recalculated
           inputsReceived: new Set()
         }
       }
     })
     
-    // First frame is wires from switches (switches are already on at step 0)
-    if (activeSwitches.length > 0) {
-      // Wires from switches as first animation frame
-      const wiresFromSwitches: Array<{ type: 'wire' | 'gate', id: string, from?: string, to?: string, value?: boolean }> = []
-      activeSwitches.forEach(switchElement => {
+    // Second pass: Apply signals from powered components to their connected gates
+    // This represents the "already established" state of the circuit
+    const poweredComponents: string[] = []
+    const animatedWires = new Set<string>()
+    
+    gates.forEach(gate => {
+      if (gate.type === 'SWITCH' && initialStates[gate.id].output) {
+        poweredComponents.push(gate.id)
+      } else if (gate.type === 'NOT') {
+        // Check if NOT gate would be powered based on its inputs
+        const hasInputConnection = connections.some(c => c.to.gateId === gate.id)
+        if (!hasInputConnection) {
+          // No input means input is false, so NOT outputs true
+          initialStates[gate.id].output = true
+          poweredComponents.push(gate.id)
+        }
+      }
+    })
+    
+    // Apply signals from initially powered components to connected gates
+    poweredComponents.forEach(sourceId => {
+      const sourceOutput = initialStates[sourceId].output
+      connections.forEach(conn => {
+        if (conn.from.gateId === sourceId && conn.from.point === 'output') {
+          const targetId = conn.to.gateId
+          const targetInput = conn.to.point as 'input1' | 'input2'
+          
+          // Set the input on the target gate
+          if (initialStates[targetId]) {
+            initialStates[targetId].inputs[targetInput] = sourceOutput
+            initialStates[targetId].inputsReceived.add(targetInput)
+            // Mark this wire as powered
+            animatedWires.add(conn.id)
+          }
+        }
+      })
+    })
+    
+    // Third pass: Calculate outputs for gates that received powered inputs
+    gates.forEach(gate => {
+      if (gate.type !== 'SWITCH' && gate.type !== 'NOT') {
+        const state = initialStates[gate.id]
+        const config = GATE_CONFIG[gate.type]
+        
+        // Calculate output based on current inputs
+        if (gate.type === 'OUTPUT') {
+          state.output = config.logic(state.inputs.input1)
+        } else if (gate.type === 'SEL' || gate.type === 'INH') {
+          state.output = config.logic(state.inputs.input1, state.inputs.input2, gate.subtype)
+        } else {
+          state.output = config.logic(state.inputs.input1, state.inputs.input2)
+        }
+        
+        if (state.output) {
+          poweredComponents.push(gate.id)
+        }
+      }
+    })
+    
+    // Keep applying signals until no more changes (for cascading NOT gates, etc)
+    let changed = true
+    while (changed) {
+      changed = false
+      const newlyPowered: string[] = []
+      
+      poweredComponents.forEach(sourceId => {
+        const sourceOutput = initialStates[sourceId].output
         connections.forEach(conn => {
-          if (conn.from.gateId === switchElement.id && conn.from.point === 'output') {
-            wiresFromSwitches.push({
-              type: 'wire',
-              id: conn.id,
-              from: switchElement.id,
-              to: conn.to.gateId,
-              value: switchElement.value
-            })
+          if (conn.from.gateId === sourceId && conn.from.point === 'output') {
+            const targetId = conn.to.gateId
+            const targetInput = conn.to.point as 'input1' | 'input2'
+            const targetGate = gates.find(g => g.id === targetId)
+            
+            if (targetGate && initialStates[targetId]) {
+              const oldInput = initialStates[targetId].inputs[targetInput]
+              if (oldInput !== sourceOutput) {
+                initialStates[targetId].inputs[targetInput] = sourceOutput
+                initialStates[targetId].inputsReceived.add(targetInput)
+                animatedWires.add(conn.id)
+                
+                // Recalculate output
+                const state = initialStates[targetId]
+                const config = GATE_CONFIG[targetGate.type]
+                let newOutput = false
+                
+                if (targetGate.type === 'NOT' || targetGate.type === 'OUTPUT') {
+                  newOutput = config.logic(state.inputs.input1)
+                } else if (targetGate.type === 'SEL' || targetGate.type === 'INH') {
+                  newOutput = config.logic(state.inputs.input1, state.inputs.input2, targetGate.subtype)
+                } else if (targetGate.type !== 'SWITCH') {
+                  newOutput = config.logic(state.inputs.input1, state.inputs.input2)
+                }
+                
+                if (newOutput !== state.output) {
+                  state.output = newOutput
+                  changed = true
+                  if (newOutput && !poweredComponents.includes(targetId)) {
+                    newlyPowered.push(targetId)
+                  }
+                }
+              }
+            }
           }
         })
       })
       
-      if (wiresFromSwitches.length > 0) {
-        queue.push(wiresFromSwitches)
-      }
-      setStepwiseMessage(null)
-    } else {
-      // No switches are on - show helpful message
-      setStepwiseMessage('Turn on at least one switch to start the simulation')
+      poweredComponents.push(...newlyPowered)
     }
+    
+    // Now build the propagation queue for future changes
+    // This would be empty at step 0 since everything is already in its stable state
+    // The queue will be populated when switches are toggled
+    
+    // The circuit is now in its stable initial state
+    // Set up animations for powered components and wires
+    const animatingGateIds = new Set<string>(poweredComponents)
     
     // Update visual state
     const updatedGates = gates.map(gate => ({
@@ -679,17 +800,16 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     setGates(updatedGates)
     
     setStepwiseGateStates(initialStates)
-    setPropagationQueue(queue)
+    setPropagationQueue(queue)  // Queue is empty initially since circuit is stable
     setProcessedElements(new Set())
-    // Animate switches that are ON at step 0
-    setAnimatingGates(new Set(activeSwitches.map(s => s.id)))
-    setAnimatingConnections(new Set())
+    setAnimatingGates(animatingGateIds)
+    setAnimatingConnections(animatedWires)
     if (!preserveStep) {
       setCurrentStep(0)
       setStepHistory([{
         gates: [...updatedGates],
-        animatingGates: new Set(activeSwitches.map(s => s.id)),
-        animatingConnections: new Set()
+        animatingGates: animatingGateIds,
+        animatingConnections: animatedWires
       }])
     }
   }, [gates, connections, stepwiseSwitchStates])
@@ -749,6 +869,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           const config = GATE_CONFIG[gate.type]
           if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
             gate.output = config.logic(gate.inputs.input1 || false)
+          } else if (gate.type === 'SEL' || gate.type === 'INH') {
+            gate.output = config.logic(gate.inputs.input1 || false, gate.inputs.input2 || false, gate.subtype)
           } else {
             gate.output = config.logic(gate.inputs.input1 || false, gate.inputs.input2 || false)
           }
@@ -937,14 +1059,19 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         
         const config = GATE_CONFIG[gate.type]
         
-        // Calculate new output
+        // Calculate new output - always default undefined inputs to false
         let newOutput = false
+        const input1 = gateState.inputs.input1 ?? false
+        const input2 = gateState.inputs.input2 ?? false
+        
         if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
-          newOutput = config.logic(gateState.inputs.input1)
+          newOutput = config.logic(input1)
         } else if (gate.type === 'SWITCH') {
           newOutput = gateState.output // Switches maintain their state
+        } else if (gate.type === 'SEL' || gate.type === 'INH') {
+          newOutput = config.logic(input1, input2, gate.subtype)
         } else {
-          newOutput = config.logic(gateState.inputs.input1, gateState.inputs.input2 || false)
+          newOutput = config.logic(input1, input2)
         }
         
         // Update local state
@@ -952,7 +1079,14 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         
         // Update visual state and animate this gate
         setGates(currentGates => currentGates.map(g => 
-          g.id === gate.id ? { ...g, output: newOutput } : g
+          g.id === gate.id ? { 
+            ...g, 
+            inputs: {
+              input1: input1,
+              input2: input2
+            },
+            output: newOutput 
+          } : g
         ))
         
         // Animate this gate (illumination)
@@ -998,14 +1132,29 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         let hasAllRequiredInputs = false
         
         if (needsBothInputs) {
+          // For two-input gates, we need to have received signals from all connected inputs
+          // But we also need to consider unconnected inputs as false (default value)
           if (hasInput1Connection && hasInput2Connection) {
+            // Both inputs connected - need both signals
             hasAllRequiredInputs = inputsReceived.has('input1') && inputsReceived.has('input2')
           } else if (hasInput1Connection || hasInput2Connection) {
+            // Only one input connected - ready when that connected input is received
+            // The unconnected input will use its default value (false)
             hasAllRequiredInputs = (hasInput1Connection && inputsReceived.has('input1')) ||
                                    (hasInput2Connection && inputsReceived.has('input2'))
+          } else {
+            // No inputs connected - gate can evaluate immediately with defaults
+            hasAllRequiredInputs = true
           }
         } else {
-          hasAllRequiredInputs = hasInput1Connection && inputsReceived.has('input1')
+          // Single input gates (NOT, OUTPUT)
+          if (gate.type === 'NOT' && !hasInput1Connection) {
+            // NOT gates with no connection should evaluate immediately
+            hasAllRequiredInputs = true
+          } else {
+            // Wait for input signal if connected
+            hasAllRequiredInputs = !hasInput1Connection || inputsReceived.has('input1')
+          }
         }
         
         // Add ready gates to next level (will illuminate in parallel)
@@ -1101,7 +1250,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       x,
       y,
       inputs: { input1: false, input2: false },
-      output: false
+      output: false,
+      // Initialize SEL gates as SELA and INH gates as INHA
+      ...(selectedTool === 'SEL' ? { subtype: 'SELA' as GateSubtype } : {}),
+      ...(selectedTool === 'INH' ? { subtype: 'INHA' as GateSubtype } : {})
     }
     
     // If it's a switch, assign a unique label
@@ -1167,27 +1319,56 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         }
         
         // Always allow toggling switches regardless of selected tool
+        const newSwitchState = !gate.output
         const newGates = gates.map(g => 
           g.id === gateId 
-            ? { ...g, output: !g.output }
+            ? { ...g, output: newSwitchState }
             : g
         )
         setGates(newGates)
         
         // In stepwise mode, also update the stepwise switch states
         if (isStepwiseMode) {
-          setStepwiseSwitchStates(prev => ({
-            ...prev,
-            [gateId]: !gate.output
-          }))
+          const newStates = {
+            ...stepwiseSwitchStates,
+            [gateId]: newSwitchState
+          }
+          setStepwiseSwitchStates(newStates)
+          // Don't auto-play, just reset to allow manual stepping
           setCurrentStep(0)
-          setIsPlaying(true)
+          setIsPlaying(false)
           setAnimatingGates(new Set())
           setAnimatingConnections(new Set())
+          // Reinitialize immediately with the new states
+          initializeStepwise(false, newStates)
         } else {
           // Trigger output recalculation after state update
           setTimeout(() => calculateOutputs(), 0)
         }
+        return
+      }
+      
+      // Toggle SEL gates between SELA and SELB
+      if (gate && gate.type === 'SEL') {
+        const newGates = gates.map(g => 
+          g.id === gateId 
+            ? { ...g, subtype: g.subtype === 'SELA' ? 'SELB' as GateSubtype : 'SELA' as GateSubtype }
+            : g
+        )
+        setGates(newGates)
+        setTimeout(() => calculateOutputs(), 0)
+        return
+      }
+      
+      // Toggle INH gates between INHA and INHB
+      if (gate && gate.type === 'INH') {
+        const newGates = gates.map(g => 
+          g.id === gateId 
+            ? { ...g, subtype: g.subtype === 'INHA' ? 'INHB' as GateSubtype : 'INHA' as GateSubtype }
+            : g
+        )
+        setGates(newGates)
+        setTimeout(() => calculateOutputs(), 0)
         return
       }
       
@@ -1473,6 +1654,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         const config = GATE_CONFIG[gate.type]
         if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
           gate.output = config.logic(gate.inputs.input1)
+        } else if (gate.type === 'SEL' || gate.type === 'INH') {
+          gate.output = config.logic(gate.inputs.input1, gate.inputs.input2, gate.subtype)
         } else if (gate.type !== 'SWITCH') {
           gate.output = config.logic(gate.inputs.input1, gate.inputs.input2)
         }
@@ -1549,8 +1732,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const memoizedStateTable = useMemo(() => {
     return generateStateTable()
   }, [
-    // Only depend on circuit structure, not gate states
-    gates.map(g => `${g.id}-${g.type}-${g.x}-${g.y}`).sort().join(','),
+    // Only depend on circuit structure, not gate states (except for subtypes)
+    gates.map(g => `${g.id}-${g.type}-${g.x}-${g.y}-${g.subtype || ''}`).sort().join(','),
     connections.map(c => `${c.from.gateId}-${c.from.point}-${c.to.gateId}-${c.to.point}`).sort().join(','),
     evaluateCircuit
   ]);
@@ -1616,6 +1799,18 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           return `¬(${wrapIfNeeded(input1)} ∧ ${wrapIfNeeded(input2)})`
         case 'NOR':
           return `¬(${wrapIfNeeded(input1)} ∨ ${wrapIfNeeded(input2)})`
+        case 'SEL':
+          if (gate.subtype === 'SELB') {
+            return `${wrapIfNeeded(input2)} ∧ ¬${wrapIfNeeded(input1)}`
+          }
+          // Default SELA
+          return `${wrapIfNeeded(input1)} ∧ ¬${wrapIfNeeded(input2)}`
+        case 'INH':
+          if (gate.subtype === 'INHB') {
+            return `¬${wrapIfNeeded(input1)} ∧ ${wrapIfNeeded(input2)}`
+          }
+          // Default INHA
+          return `${wrapIfNeeded(input1)} ∧ ¬${wrapIfNeeded(input2)}`
         default:
           return '0'
       }
@@ -1701,6 +1896,18 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           return `¬(${wrapIfNeeded(input1)} ∧ ${wrapIfNeeded(input2)})`
         case 'NOR':
           return `¬(${wrapIfNeeded(input1)} ∨ ${wrapIfNeeded(input2)})`
+        case 'SEL':
+          if (gate.subtype === 'SELB') {
+            return `${wrapIfNeeded(input2)} ∧ ¬${wrapIfNeeded(input1)}`
+          }
+          // Default SELA
+          return `${wrapIfNeeded(input1)} ∧ ¬${wrapIfNeeded(input2)}`
+        case 'INH':
+          if (gate.subtype === 'INHB') {
+            return `¬${wrapIfNeeded(input1)} ∧ ${wrapIfNeeded(input2)}`
+          }
+          // Default INHA
+          return `${wrapIfNeeded(input1)} ∧ ¬${wrapIfNeeded(input2)}`
         default:
           return '0'
       }
@@ -2675,7 +2882,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           <div className="w-px h-12 bg-white/10 mx-1" />
           
           {/* Logic Gates with Visual Previews */}
-          {['AND', 'OR', 'NAND', 'NOR', 'XOR', 'NOT'].map((type) => {
+          {['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR', 'SEL', 'INH'].map((type) => {
             const gateType = type as GateType
             const config = GATE_CONFIG[gateType]
             const isAvailable = availableGates.includes(gateType)
@@ -2728,6 +2935,45 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-purple-400 rounded-full" />
                         <div className="absolute inset-2 flex items-center justify-center">
                           <span className="text-[8px] font-bold text-purple-400">⊕</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                case 'XNOR':
+                  return (
+                    <div className="relative w-8 h-8">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${config.color} rounded-lg border ${config.borderColor}`}>
+                        <div className="absolute left-0.5 top-2 w-0.5 h-0.5 bg-indigo-400 rounded-full" />
+                        <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-indigo-400 rounded-full" />
+                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-indigo-400 rounded-full" />
+                        <div className="absolute inset-2 flex items-center justify-center">
+                          <span className="text-[6px] font-bold text-indigo-400">⊙</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                case 'SEL':
+                  return (
+                    <div className="relative w-8 h-8">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${config.color} rounded-lg border ${config.borderColor}`}>
+                        <div className="absolute left-0.5 top-2 w-0.5 h-0.5 bg-cyan-400 rounded-full" />
+                        <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-cyan-400 rounded-full" />
+                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-cyan-400 rounded-full" />
+                        <div className="absolute inset-2 flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-cyan-400">○</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                case 'INH':
+                  return (
+                    <div className="relative w-8 h-8">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${config.color} rounded-lg border ${config.borderColor}`}>
+                        <div className="absolute left-0.5 top-2 w-0.5 h-0.5 bg-pink-400 rounded-full" />
+                        <div className="absolute left-0.5 bottom-2 w-0.5 h-0.5 bg-pink-400 rounded-full" />
+                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-0.5 bg-pink-400 rounded-full" />
+                        <div className="absolute inset-2 flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-pink-400">⊗</span>
                         </div>
                       </div>
                     </div>
@@ -2821,7 +3067,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             onClick={() => setShowStateTable(!showStateTable)}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               showStateTable
-                ? 'bg-gradient-to-r from-cosmic-aurora/30 to-cosmic-starlight/30 border border-cosmic-aurora/50 text-cosmic-aurora shadow-lg shadow-cosmic-aurora/20'
+                ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/20'
                 : 'bg-white/5 border border-transparent text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
@@ -2829,40 +3075,56 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             <span className="font-semibold text-xs select-none hidden lg:inline">Table</span>
           </button>
 
-          <button
+          {!isPuzzleMode && <button
             onClick={() => setShowEquation(!showEquation)}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               showEquation
-                ? 'bg-gradient-to-r from-purple-500/30 to-purple-600/30 border border-purple-500/50 text-purple-300 shadow-lg shadow-purple-500/20'
+                ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/20'
                 : 'bg-white/5 border border-transparent text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
             <Calculator className="w-3.5 h-3.5" />
             <span className="font-semibold text-xs select-none hidden lg:inline">Equation</span>
-          </button>
+          </button>}
           
-          <button
+          {!isPuzzleMode && <button
             onClick={() => {
               if (!isStepwiseMode) {
                 // Entering stepwise mode
                 setIsStepwiseMode(true)
                 setShowStepwise(true)
-                // Initialize all switches to OFF
+                // Initialize switches to their current states (preserve switch positions)
                 const switchStates: Record<string, boolean> = {}
                 gates.filter(g => g.type === 'SWITCH').forEach(s => {
-                  switchStates[s.id] = false
+                  switchStates[s.id] = s.output
                 })
                 setStepwiseSwitchStates(switchStates)
-                // Initialize to step 0 with all gates off
-                setGates(gates.map(g => ({
-                  ...g,
-                  output: false,
-                  inputs: { input1: false, input2: false }
-                })))
+                // Initialize gates but preserve switch states
+                // NOT gates should start with output=true if their input is false
+                setGates(gates.map(g => {
+                  if (g.type === 'SWITCH') {
+                    return { ...g }
+                  } else if (g.type === 'NOT') {
+                    // NOT gates output true when input is false
+                    return {
+                      ...g,
+                      inputs: { input1: false, input2: false },
+                      output: true  // NOT of false is true
+                    }
+                  } else {
+                    return {
+                      ...g,
+                      inputs: { input1: false, input2: false },
+                      output: false
+                    }
+                  }
+                }))
                 setCurrentStep(0)
                 setIsPlaying(false)
                 setAnimatingGates(new Set())
                 setAnimatingConnections(new Set())
+                // Initialize the stepwise simulation with current switch states
+                initializeStepwise(false, switchStates)
               } else {
                 // Exiting stepwise mode
                 setIsStepwiseMode(false)
@@ -2876,15 +3138,15 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             }}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               isStepwiseMode
-                ? 'bg-gradient-to-r from-cyan-500/30 to-cyan-600/30 border border-cyan-500/50 text-cyan-300 shadow-lg shadow-cyan-500/20'
+                ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/20'
                 : 'bg-white/5 border border-transparent text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
             <Gauge className="w-3.5 h-3.5" />
             <span className="font-semibold text-xs select-none hidden lg:inline">Step</span>
-          </button>
+          </button>}
           
-          <button
+          {!isPuzzleMode && <button
             onClick={() => setSnapToGrid(!snapToGrid)}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               snapToGrid
@@ -2895,7 +3157,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           >
             <Grid className="w-3.5 h-3.5" />
             <span className="font-semibold text-xs select-none hidden lg:inline">Grid</span>
-          </button>
+          </button>}
           
           <div className="w-px h-6 bg-white/10 mx-1" />
           
@@ -3249,25 +3511,13 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     borderWidth: zoom + 'px',
                     borderStyle: 'solid',
                     boxShadow: gate.output ? `0 ${10*zoom}px ${25*zoom}px ${-5*zoom}px rgba(0,0,0,0.1), 0 ${4*zoom}px ${10*zoom}px ${-3*zoom}px rgba(0,0,0,0.07)` : `0 ${zoom}px ${3*zoom}px rgba(0,0,0,0.1)`,
-                    ...(animatingGates.has(gate.id) ? {
+                    ...(animatingGates.has(gate.id) || gate.output ? {
                       boxShadow: `0 0 0 ${4*zoom}px rgba(34, 211, 238, 0.5), ${gate.output ? `0 ${10*zoom}px ${25*zoom}px ${-5*zoom}px rgba(0,0,0,0.1)` : `0 ${zoom}px ${3*zoom}px rgba(0,0,0,0.1)`}`
                     } : {})
                   }}>
-                  {gate.output && (
+                  {(animatingGates.has(gate.id) || gate.output) && (
                     <div 
-                      className={`absolute bg-${GATE_CONFIG[gate.type].glowColor}-400/20`}
-                      style={{
-                        top: -4 * zoom + 'px',
-                        left: -4 * zoom + 'px',
-                        right: -4 * zoom + 'px',
-                        bottom: -4 * zoom + 'px',
-                        borderRadius: 16 * zoom + 'px',
-                        filter: `blur(${12 * zoom}px)`
-                      }} />
-                  )}
-                  {animatingGates.has(gate.id) && (
-                    <div 
-                      className="absolute bg-cyan-400/30 animate-pulse"
+                      className={`absolute bg-cyan-400/30 ${animatingGates.has(gate.id) ? 'animate-pulse' : ''}`}
                       style={{
                         top: -8 * zoom + 'px',
                         left: -8 * zoom + 'px',
@@ -3282,7 +3532,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     <span className={`font-medium tracking-wide ${
                       gate.output ? 'text-white' : 'text-white/70'
                     }`} style={{ fontSize: 12 * zoom + 'px' }}>
-                      {gate.type === 'SWITCH' ? (gate.output ? 'ON' : 'OFF') : GATE_CONFIG[gate.type].symbol}
+                      {gate.type === 'SWITCH' ? (gate.output ? 'ON' : 'OFF') : 
+                       gate.type === 'SEL' ? gate.subtype || 'SELA' :
+                       gate.type === 'INH' ? gate.subtype || 'INHA' :
+                       GATE_CONFIG[gate.type].symbol}
                     </span>
                     {gate.type !== 'SWITCH' && gate.type !== 'OUTPUT' && (
                       <span className={`${
@@ -3293,7 +3546,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                          gate.type === 'NOT' ? '¬' : 
                          gate.type === 'XOR' ? '⊕' : 
                          gate.type === 'NAND' ? '↑' : 
-                         gate.type === 'NOR' ? '↓' : ''}
+                         gate.type === 'NOR' ? '↓' : 
+                         gate.type === 'SEL' ? '○' :
+                         gate.type === 'INH' ? '⊗' : ''}
                       </span>
                     )}
                   </div>
@@ -3759,7 +4014,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                 onClick={() => setEquationMode('generate')}
                 className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                   equationMode === 'generate'
-                    ? 'bg-gradient-to-r from-purple-500/30 to-purple-600/30 border border-purple-500/50 text-purple-300'
+                    ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -3769,7 +4024,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                 onClick={() => setEquationMode('parse')}
                 className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                   equationMode === 'parse'
-                    ? 'bg-gradient-to-r from-purple-500/30 to-purple-600/30 border border-purple-500/50 text-purple-300'
+                    ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -3785,7 +4040,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     onClick={() => setEquationFormat('SOP')}
                     className={`px-3 py-1 text-xs rounded transition-all ${
                       equationFormat === 'SOP'
-                        ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+                        ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
                         : 'bg-white/5 text-white/60 hover:bg-white/10'
                     }`}
                   >
@@ -3795,7 +4050,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     onClick={() => setEquationFormat('POS')}
                     className={`px-3 py-1 text-xs rounded transition-all ${
                       equationFormat === 'POS'
-                        ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+                        ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
                         : 'bg-white/5 text-white/60 hover:bg-white/10'
                     }`}
                   >
@@ -3805,7 +4060,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                     onClick={() => setEquationFormat('SIMPLIFIED')}
                     className={`px-3 py-1 text-xs rounded transition-all ${
                       equationFormat === 'SIMPLIFIED'
-                        ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+                        ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
                         : 'bg-white/5 text-white/60 hover:bg-white/10'
                     }`}
                   >
@@ -4059,7 +4314,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                   className={`w-full px-4 py-2 rounded-lg transition-all ${
                     !equationInput.trim() || syntaxError
                       ? 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-indigo-500/30 to-indigo-600/30 border border-indigo-500/50 text-indigo-300 hover:from-indigo-500/40 hover:to-indigo-600/40 cursor-pointer'
+                      : 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300 hover:from-blue-500/40 hover:to-blue-600/40 cursor-pointer'
                   }`}
                 >
                   Generate Circuit
@@ -4127,15 +4382,23 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                               onClick={() => {
                                 const newValue = !switchGate.output
                                 // Update both the stepwise state and the actual switch state
-                                setStepwiseSwitchStates(prev => ({
-                                  ...prev,
+                                const newStates = {
+                                  ...stepwiseSwitchStates,
                                   [switchGate.id]: newValue
-                                }))
+                                }
+                                setStepwiseSwitchStates(newStates)
                                 setGates(gates => gates.map(g => 
                                   g.id === switchGate.id 
                                     ? { ...g, output: newValue } 
                                     : g
                                 ))
+                                // Reset step to 0 when switches change
+                                setCurrentStep(0)
+                                setIsPlaying(false)
+                                setAnimatingGates(new Set())
+                                setAnimatingConnections(new Set())
+                                // Reinitialize immediately with the new states
+                                initializeStepwise(false, newStates)
                               }}
                               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                                 switchGate.output ? 'bg-emerald-500' : 'bg-gray-600'
