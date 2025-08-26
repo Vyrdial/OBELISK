@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, MousePointer2, X, Table, Calculator, FileText, Copy, Check, Trash, Play, Pause, SkipForward, Gauge, AlertCircle, ChevronRight, Grid, Save, FolderOpen, Share2, Download, Upload, ChevronDown, ZoomIn, ZoomOut, Maximize2, RotateCcw, Lock, Binary } from 'lucide-react'
+import { Plus, Trash2, MousePointer2, X, Table, Calculator, FileText, Copy, Check, Trash, Play, Pause, SkipForward, Gauge, AlertCircle, ChevronRight, Grid, Save, FolderOpen, Share2, Download, Upload, ChevronDown, ZoomIn, ZoomOut, Maximize2, RotateCcw, Lock, Binary, BookOpen, HelpCircle, Lightbulb, Flag } from 'lucide-react'
 
 // Types
 type GateType = 'AND' | 'OR' | 'NOT' | 'XOR' | 'XNOR' | 'NAND' | 'NOR' | 'SEL' | 'INH' | 'SWITCH' | 'OUTPUT'
@@ -283,6 +283,7 @@ interface LogicGateWorkspaceProps {
   showWiringHelp?: boolean
   wiringHelpText?: string
   onConnectionStateChange?: (isConnecting: boolean) => void
+  onToolSelect?: (tool: GateType) => void
 }
 
 const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({ 
@@ -297,7 +298,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   enablePan = true,
   showWiringHelp = false,
   wiringHelpText = '',
-  onConnectionStateChange
+  onConnectionStateChange,
+  onToolSelect
 }: LogicGateWorkspaceProps = {}, ref) => {
   // Check if we're in puzzle mode (limited gates available)
   const isPuzzleMode = availableGates && availableGates.length < 8; // Full workspace has 8+ gate types
@@ -306,7 +308,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [connections, setConnections] = useState<Connection[]>([])
   const [selectedGate, setSelectedGate] = useState<string | null>(null)
   const [connectingFrom, setConnectingFrom] = useState<{ gateId: string; point: ConnectionPoint } | null>(null)
-  const [selectedTool, setSelectedTool] = useState<GateType>('SWITCH')
+  const [selectedTool, setSelectedTool] = useState<GateType | null>(isPuzzleMode ? null : 'SWITCH')
   const [snapToGrid, setSnapToGrid] = useState(true)
   const [draggingGate, setDraggingGate] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -314,11 +316,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [hoveredConnection, setHoveredConnection] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [invalidConnectionMessage, setInvalidConnectionMessage] = useState<string | null>(null)
   
   // Calculate component usage
   const componentUsage = useMemo(() => {
     const usage: Record<GateType, number> = {
-      'AND': 0, 'OR': 0, 'NOT': 0, 'XOR': 0, 'NAND': 0, 'NOR': 0, 'SWITCH': 0, 'OUTPUT': 0
+      'AND': 0, 'OR': 0, 'NOT': 0, 'XOR': 0, 'XNOR': 0, 'NAND': 0, 'NOR': 0, 'SEL': 0, 'INH': 0, 'SWITCH': 0, 'OUTPUT': 0
     }
     gates.forEach(gate => {
       usage[gate.type] = (usage[gate.type] || 0) + 1
@@ -356,7 +359,9 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [showStepwise, setShowStepwise] = useState(false)
   const [isStepwiseMode, setIsStepwiseMode] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const stepInterval = 300 // Fixed animation speed in milliseconds
+  const [playbackSpeed, setPlaybackSpeed] = useState(1) // Speed multiplier (0.5x to 5x)
+  const baseStepInterval = 500 // Base animation speed in milliseconds
+  const stepInterval = baseStepInterval / playbackSpeed // Adjusted by speed
   const [currentStep, setCurrentStep] = useState(0)
   const [animatingGates, setAnimatingGates] = useState<Set<string>>(new Set())
   const [animatingConnections, setAnimatingConnections] = useState<Set<string>>(new Set())
@@ -365,6 +370,26 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
   const [isDraggingStepwise, setIsDraggingStepwise] = useState(false)
   const [stepwiseDragStart, setStepwiseDragStart] = useState({ x: 0, y: 0 })
   const [stepwiseMessage, setStepwiseMessage] = useState<string | null>(null)
+  
+  // Enhanced visualization state
+  const [propagationMode, setPropagationMode] = useState<'wavefront' | 'sequential' | 'manual'>('sequential')
+  const [visualOptions, setVisualOptions] = useState({
+    showIntermediateValues: true,
+    showWireStates: true,
+    showEvaluationOrder: false,
+    highlightCriticalPath: false,
+    colorScheme: 'default' as 'default' | 'colorblind'
+  })
+  const [currentOperation, setCurrentOperation] = useState<{
+    gateId: string
+    gateType: string
+    inputs: Record<string, boolean>
+    output: boolean
+    operation: string
+  } | null>(null)
+  const [evaluationOrder, setEvaluationOrder] = useState<Record<string, number>>({})
+  const [undefinedGates, setUndefinedGates] = useState<Set<string>>(new Set())
+  const [totalSteps, setTotalSteps] = useState(0)
   
   // New state for proper step-by-step propagation with levels
   const [propagationQueue, setPropagationQueue] = useState<Array<Array<{
@@ -375,14 +400,17 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     value?: boolean
   }>>>([])
   const [stepwiseGateStates, setStepwiseGateStates] = useState<Record<string, { 
-    inputs: Record<string, boolean>, 
-    output: boolean,
+    inputs: Record<string, boolean | undefined>, 
+    output: boolean | undefined,
+    evaluated: boolean,
     inputsReceived: Set<string> // Track which inputs have been received
   }>>({})
   const [stepHistory, setStepHistory] = useState<Array<{
     gates: LogicGate[],
     animatingGates: Set<string>,
-    animatingConnections: Set<string>
+    animatingConnections: Set<string>,
+    undefinedGates: Set<string>,
+    currentOperation: typeof currentOperation
   }>>([])
   const [processedElements, setProcessedElements] = useState<Set<string>>(new Set())
   const [showProjects, setShowProjects] = useState(false)
@@ -642,17 +670,25 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
 
   // Initialize stepwise mode with selected switch states
   const initializeStepwise = useCallback((preserveStep = false, overrideSwitchStates?: Record<string, boolean>) => {
-    // Reset all gate states
+    // Reset all gate states with enhanced state tracking
     const initialStates: Record<string, { 
-      inputs: Record<string, boolean>, 
-      output: boolean,
+      inputs: Record<string, boolean | undefined>, 
+      output: boolean | undefined,
+      evaluated: boolean,
       inputsReceived: Set<string>
     }> = {}
+    
+    // Track all gates as undefined initially
+    const allUndefinedGates = new Set<string>()
     
     // Build propagation queue
     const queue: Array<Array<{ type: 'wire' | 'gate', id: string, from?: string, to?: string, value?: boolean }>> = []
     
-    // First pass: Initialize all gates with default states
+    // Initialize evaluation order counter
+    let orderCounter = 0
+    const newEvaluationOrder: Record<string, number> = {}
+    
+    // First pass: Initialize all gates with undefined states
     gates.forEach(gate => {
       if (gate.type === 'SWITCH') {
         // Use override if provided, then stepwise state, then gate's current output
@@ -660,17 +696,21 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         initialStates[gate.id] = { 
           inputs: {}, 
           output: switchValue,
+          evaluated: true, // Switches are always evaluated
           inputsReceived: new Set()
         }
+        newEvaluationOrder[gate.id] = orderCounter++
       } else {
-        // Initialize other gates with default inputs
+        // Initialize other gates as undefined
         initialStates[gate.id] = { 
           inputs: gate.type === 'NOT' || gate.type === 'OUTPUT' 
-            ? { input1: false } 
-            : { input1: false, input2: false }, 
-          output: false,  // Will be recalculated
+            ? { input1: undefined } 
+            : { input1: undefined, input2: undefined }, 
+          output: undefined,  // Undefined until evaluated
+          evaluated: false,
           inputsReceived: new Set()
         }
+        allUndefinedGates.add(gate.id)
       }
     })
     
@@ -720,11 +760,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         
         // Calculate output based on current inputs
         if (gate.type === 'OUTPUT') {
-          state.output = config.logic(state.inputs.input1)
+          state.output = (config.logic as (a: boolean) => boolean)(state.inputs.input1 ?? false)
         } else if (gate.type === 'SEL' || gate.type === 'INH') {
-          state.output = config.logic(state.inputs.input1, state.inputs.input2, gate.subtype)
+          state.output = (config.logic as (a: boolean, b: boolean, subtype?: GateSubtype) => boolean)(state.inputs.input1 ?? false, state.inputs.input2 ?? false, gate.subtype)
         } else {
-          state.output = config.logic(state.inputs.input1, state.inputs.input2)
+          state.output = (config.logic as (a: boolean, b: boolean) => boolean)(state.inputs.input1 ?? false, state.inputs.input2 ?? false)
         }
         
         if (state.output) {
@@ -760,11 +800,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                 let newOutput = false
                 
                 if (targetGate.type === 'NOT' || targetGate.type === 'OUTPUT') {
-                  newOutput = config.logic(state.inputs.input1)
+                  newOutput = (config.logic as (a: boolean) => boolean)(state.inputs.input1 ?? false)
                 } else if (targetGate.type === 'SEL' || targetGate.type === 'INH') {
-                  newOutput = config.logic(state.inputs.input1, state.inputs.input2, targetGate.subtype)
+                  newOutput = (config.logic as (a: boolean, b: boolean, subtype?: GateSubtype) => boolean)(state.inputs.input1 ?? false, state.inputs.input2 ?? false, targetGate.subtype)
                 } else if (targetGate.type !== 'SWITCH') {
-                  newOutput = config.logic(state.inputs.input1, state.inputs.input2)
+                  newOutput = (config.logic as (a: boolean, b: boolean) => boolean)(state.inputs.input1 ?? false, state.inputs.input2 ?? false)
                 }
                 
                 if (newOutput !== state.output) {
@@ -794,8 +834,10 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     // Update visual state
     const updatedGates = gates.map(gate => ({
       ...gate,
-      inputs: gate.type === 'SWITCH' ? {} : initialStates[gate.id].inputs,
-      output: initialStates[gate.id].output
+      inputs: gate.type === 'SWITCH' ? {} : Object.fromEntries(
+        Object.entries(initialStates[gate.id].inputs).map(([key, value]) => [key, value ?? false])
+      ),
+      output: initialStates[gate.id].output ?? false
     }))
     setGates(updatedGates)
     
@@ -804,12 +846,22 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
     setProcessedElements(new Set())
     setAnimatingGates(animatingGateIds)
     setAnimatingConnections(animatedWires)
+    setUndefinedGates(allUndefinedGates)
+    setEvaluationOrder(newEvaluationOrder)
+    setCurrentOperation(null)
+    
+    // Calculate total steps for progress tracking
+    const totalGates = gates.filter(g => g.type !== 'SWITCH').length
+    setTotalSteps(totalGates)
+    
     if (!preserveStep) {
       setCurrentStep(0)
       setStepHistory([{
         gates: [...updatedGates],
         animatingGates: animatingGateIds,
-        animatingConnections: animatedWires
+        animatingConnections: animatedWires,
+        undefinedGates: allUndefinedGates,
+        currentOperation: null
       }])
     }
   }, [gates, connections, stepwiseSwitchStates])
@@ -868,11 +920,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           // Calculate output
           const config = GATE_CONFIG[gate.type]
           if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
-            gate.output = config.logic(gate.inputs.input1 || false)
+            gate.output = (config.logic as (a: boolean) => boolean)(gate.inputs.input1 || false)
           } else if (gate.type === 'SEL' || gate.type === 'INH') {
-            gate.output = config.logic(gate.inputs.input1 || false, gate.inputs.input2 || false, gate.subtype)
+            gate.output = (config.logic as (a: boolean, b: boolean, subtype?: GateSubtype) => boolean)(gate.inputs.input1 || false, gate.inputs.input2 || false, gate.subtype)
           } else {
-            gate.output = config.logic(gate.inputs.input1 || false, gate.inputs.input2 || false)
+            gate.output = (config.logic as (a: boolean, b: boolean) => boolean)(gate.inputs.input1 || false, gate.inputs.input2 || false)
           }
           
           // Update connection map if output changed
@@ -973,6 +1025,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         setGates(previousState.gates)
         setAnimatingGates(previousState.animatingGates)
         setAnimatingConnections(previousState.animatingConnections)
+        setUndefinedGates(previousState.undefinedGates)
+        setCurrentOperation(previousState.currentOperation)
         setCurrentStep(prev => prev - 1)
       }
       return
@@ -1023,6 +1077,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
               ? { input1: false }
               : { input1: false, input2: false }, 
             output: false,
+            evaluated: false,
             inputsReceived: new Set()
           }
         }
@@ -1059,33 +1114,75 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         
         const config = GATE_CONFIG[gate.type]
         
-        // Calculate new output - always default undefined inputs to false
-        let newOutput = false
-        const input1 = gateState.inputs.input1 ?? false
-        const input2 = gateState.inputs.input2 ?? false
+        // Calculate new output - handle undefined inputs based on propagation mode
+        let newOutput: boolean | undefined = undefined
+        const input1 = gateState.inputs.input1
+        const input2 = gateState.inputs.input2
+        
+        // Generate operation description
+        let operationStr = ''
         
         if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
-          newOutput = config.logic(input1)
+          const val1 = input1 ?? false
+          newOutput = (config.logic as (a: boolean) => boolean)(val1)
+          operationStr = gate.type === 'NOT' ? `¬${val1 ? '1' : '0'} = ${newOutput ? '1' : '0'}` : `Input: ${val1 ? '1' : '0'}`
         } else if (gate.type === 'SWITCH') {
           newOutput = gateState.output // Switches maintain their state
+          operationStr = `Switch: ${newOutput ? 'ON' : 'OFF'}`
         } else if (gate.type === 'SEL' || gate.type === 'INH') {
-          newOutput = config.logic(input1, input2, gate.subtype)
+          const val1 = input1 ?? false
+          const val2 = input2 ?? false
+          newOutput = config.logic(val1, val2, gate.subtype)
+          operationStr = `${val1 ? '1' : '0'} ${gate.type} ${val2 ? '1' : '0'} = ${newOutput ? '1' : '0'}`
         } else {
-          newOutput = config.logic(input1, input2)
+          const val1 = input1 ?? false
+          const val2 = input2 ?? false
+          newOutput = config.logic(val1, val2)
+          const opSymbol = gate.type === 'AND' ? '∧' : gate.type === 'OR' ? '∨' : gate.type === 'XOR' ? '⊕' : gate.type === 'NAND' ? '↑' : gate.type === 'NOR' ? '↓' : '?'
+          operationStr = `${val1 ? '1' : '0'} ${opSymbol} ${val2 ? '1' : '0'} = ${newOutput ? '1' : '0'}`
         }
         
         // Update local state
-        localGateStates[gate.id] = { ...gateState, output: newOutput }
+        localGateStates[gate.id] = { 
+          ...gateState, 
+          output: newOutput,
+          evaluated: true
+        }
+        
+        // Update current operation display
+        setCurrentOperation({
+          gateId: gate.id,
+          gateType: gate.type,
+          inputs: {
+            input1: input1 ?? false,
+            input2: input2 ?? false
+          },
+          output: newOutput ?? false,
+          operation: operationStr
+        })
+        
+        // Remove from undefined gates
+        setUndefinedGates(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(gate.id)
+          return newSet
+        })
+        
+        // Update evaluation order
+        setEvaluationOrder(prev => ({
+          ...prev,
+          [gate.id]: Object.keys(prev).length
+        }))
         
         // Update visual state and animate this gate
         setGates(currentGates => currentGates.map(g => 
           g.id === gate.id ? { 
             ...g, 
             inputs: {
-              input1: input1,
-              input2: input2
+              input1: input1 ?? false,
+              input2: input2 ?? false
             },
-            output: newOutput 
+            output: newOutput ?? false
           } : g
         ))
         
@@ -1191,11 +1288,13 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       newHistory.push({
         gates: [...gates],
         animatingGates: new Set(newAnimatingGates),
-        animatingConnections: new Set(newAnimatingConnections)
+        animatingConnections: new Set(newAnimatingConnections),
+        undefinedGates: new Set(undefinedGates),
+        currentOperation: currentOperation
       })
       return newHistory
     })
-  }, [isPlaying, propagationQueue, connections, gates, stepwiseGateStates, processedElements, currentStep, animatingGates, animatingConnections, stepHistory])
+  }, [isPlaying, propagationQueue, connections, gates, stepwiseGateStates, processedElements, currentStep, animatingGates, animatingConnections, stepHistory, undefinedGates, currentOperation])
 
   // Handle stepwise playback
   useEffect(() => {
@@ -1217,8 +1316,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       return
     }
     
-    // Don't place gates if we're in wire/delete mode, panning, or if shift is held
-    if (!workspaceRef.current || selectedTool === 'wire' || selectedTool === 'delete' || isPanning || e.shiftKey) return
+    // Don't place gates if panning or if shift is held or if no tool is selected
+    if (!workspaceRef.current || isPanning || e.shiftKey || !selectedTool) return
     
     // Check component limits if they exist
     if (componentLimits && componentLimits[selectedTool]) {
@@ -1537,6 +1636,21 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           ((connectingFrom.point === 'output' && point !== 'output') ||
            (connectingFrom.point !== 'output' && point === 'output'))) {
         
+        // Check for invalid connection: OUTPUT to SWITCH
+        const fromGate = gates.find(g => g.id === connectingFrom.gateId)
+        const toGate = gates.find(g => g.id === gateId)
+        
+        if (fromGate && toGate) {
+          // Check if trying to connect OUTPUT to SWITCH
+          if ((fromGate.type === 'OUTPUT' && toGate.type === 'SWITCH') || 
+              (toGate.type === 'OUTPUT' && fromGate.type === 'SWITCH' && connectingFrom.point !== 'output')) {
+            setInvalidConnectionMessage("That's not quite right...")
+            setTimeout(() => setInvalidConnectionMessage(null), 2000)
+            setConnectingFrom(null)
+            return
+          }
+        }
+        
         // Check if the target input already has a connection
         const targetInput = connectingFrom.point === 'output' ? { gateId, point } : connectingFrom
         const hasExistingConnection = connections.some(c => 
@@ -1653,11 +1767,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         // Calculate output
         const config = GATE_CONFIG[gate.type]
         if (gate.type === 'NOT' || gate.type === 'OUTPUT') {
-          gate.output = config.logic(gate.inputs.input1)
+          gate.output = (config.logic as (a: boolean) => boolean)(gate.inputs.input1 ?? false)
         } else if (gate.type === 'SEL' || gate.type === 'INH') {
-          gate.output = config.logic(gate.inputs.input1, gate.inputs.input2, gate.subtype)
-        } else if (gate.type !== 'SWITCH') {
-          gate.output = config.logic(gate.inputs.input1, gate.inputs.input2)
+          gate.output = (config.logic as (a: boolean, b: boolean, subtype?: GateSubtype) => boolean)(gate.inputs.input1 ?? false, gate.inputs.input2 ?? false, gate.subtype)
+        } else if (gate.type === 'AND' || gate.type === 'OR' || gate.type === 'XOR' || gate.type === 'XNOR' || gate.type === 'NAND' || gate.type === 'NOR') {
+          gate.output = (config.logic as (a: boolean, b: boolean) => boolean)(gate.inputs.input1 ?? false, gate.inputs.input2 ?? false)
         }
         
         // Update connection map if output changed
@@ -2594,151 +2708,6 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
       return processWithOperators(processedTokens)
     }
     
-    // Process expression with explicit operators
-    const processOperatorExpression = (tokens: ReturnType<typeof tokenize>): string => {
-      // Apply operator precedence: NOT > AND/NAND > OR/NOR/XOR/XNOR
-      
-      // Find lowest precedence operator (rightmost OR/NOR/XOR/XNOR)
-      let opIndex = -1
-      let opType = ''
-      
-      // First look for OR/NOR (lowest precedence)
-      for (let i = tokens.length - 1; i >= 0; i--) {
-        if (tokens[i].type === 'OP' && (tokens[i].value === 'OR' || tokens[i].value === 'NOR')) {
-          opIndex = i
-          opType = tokens[i].value
-          break
-        }
-      }
-      
-      // If no OR/NOR, look for XOR/XNOR
-      if (opIndex === -1) {
-        for (let i = tokens.length - 1; i >= 0; i--) {
-          if (tokens[i].type === 'OP' && (tokens[i].value === 'XOR' || tokens[i].value === 'XNOR')) {
-            opIndex = i
-            opType = tokens[i].value
-            break
-          }
-        }
-      }
-      
-      // If no OR/NOR/XOR/XNOR, look for AND/NAND
-      if (opIndex === -1) {
-        for (let i = tokens.length - 1; i >= 0; i--) {
-          if (tokens[i].type === 'OP' && (tokens[i].value === 'AND' || tokens[i].value === 'NAND')) {
-            opIndex = i
-            opType = tokens[i].value
-            break
-          }
-        }
-      }
-      
-      if (opIndex === -1) {
-        // No operator, process as single element
-        return parseTokens(tokens)
-      }
-      
-      // Split at operator and process recursively
-      const leftTokens = tokens.slice(0, opIndex)
-      const rightTokens = tokens.slice(opIndex + 1)
-      
-      const leftGateId = parseTokens(leftTokens)
-      const rightGateId = parseTokens(rightTokens)
-      
-      if (!leftGateId || !rightGateId) return leftGateId || rightGateId || ''
-      
-      // Create gate for this operation
-      if (['NAND', 'NOR', 'XNOR'].includes(opType)) {
-        // Create compound gates (gate + NOT)
-        const baseType = opType === 'NAND' ? 'AND' : opType === 'NOR' ? 'OR' : 'XOR'
-        
-        // Get input levels
-        const leftLevel = gateLevel.get(leftGateId) || 0
-        const rightLevel = gateLevel.get(rightGateId) || 0
-        const baseLevel = Math.max(leftLevel, rightLevel) + 1
-        const notLevel = baseLevel + 1
-        maxLevel = Math.max(maxLevel, notLevel)
-        
-        // Create the base gate
-        const baseGate: LogicGate = {
-          id: `${baseType.toLowerCase()}-${Date.now()}-${Math.random()}`,
-          type: baseType as GateType,
-          x: getXForLevel(baseLevel),
-          y: baseY,
-          inputs: {},
-          output: false
-        }
-        createdGates.push(baseGate)
-        gateLevel.set(baseGate.id, baseLevel)
-        
-        // Create NOT gate
-        const notGate: LogicGate = {
-          id: `not-${Date.now()}-${Math.random()}`,
-          type: 'NOT',
-          x: getXForLevel(notLevel),
-          y: baseY,
-          inputs: { input1: false },
-          output: false
-        }
-        createdGates.push(notGate)
-        gateLevel.set(notGate.id, notLevel)
-        
-        // Connect inputs to base gate
-        gateConnections.push(
-          {
-            id: `conn-${Date.now()}-${Math.random()}`,
-            from: { gateId: leftGateId, point: 'output' },
-            to: { gateId: baseGate.id, point: 'input1' }
-          },
-          {
-            id: `conn-${Date.now()}-${Math.random()}`,
-            from: { gateId: rightGateId, point: 'output' },
-            to: { gateId: baseGate.id, point: 'input2' }
-          },
-          {
-            id: `conn-${Date.now()}-${Math.random()}`,
-            from: { gateId: baseGate.id, point: 'output' },
-            to: { gateId: notGate.id, point: 'input1' }
-          }
-        )
-        
-        return notGate.id
-      } else {
-        // Create simple gate
-        const leftLevel = gateLevel.get(leftGateId) || 0
-        const rightLevel = gateLevel.get(rightGateId) || 0
-        const gateLevel_ = Math.max(leftLevel, rightLevel) + 1
-        maxLevel = Math.max(maxLevel, gateLevel_)
-        
-        const gateType = opType as GateType
-        const gate: LogicGate = {
-          id: `${gateType.toLowerCase()}-${Date.now()}-${Math.random()}`,
-          type: gateType,
-          x: getXForLevel(gateLevel_),
-          y: baseY,
-          inputs: {},
-          output: false
-        }
-        createdGates.push(gate)
-        gateLevel.set(gate.id, gateLevel_)
-        
-        gateConnections.push(
-          {
-            id: `conn-${Date.now()}-${Math.random()}`,
-            from: { gateId: leftGateId, point: 'output' },
-            to: { gateId: gate.id, point: 'input1' }
-          },
-          {
-            id: `conn-${Date.now()}-${Math.random()}`,
-            from: { gateId: rightGateId, point: 'output' },
-            to: { gateId: gate.id, point: 'input2' }
-          }
-        )
-        
-        return gate.id
-      }
-    }
-    
     // Parse the expression
     const tokens = tokenize(expression)
     const finalGateId = parseTokens(tokens)
@@ -2801,7 +2770,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
         <div className="flex items-center gap-2 bg-cosmic-void/90 backdrop-blur-xl rounded-xl p-2 border border-white/10">
           {/* Switch Button with Visual */}
           <button
-            onClick={() => availableGates.includes('SWITCH') && setSelectedTool('SWITCH')}
+            onClick={() => {
+              if (availableGates.includes('SWITCH')) {
+                setSelectedTool('SWITCH')
+                onToolSelect?.('SWITCH')
+              }
+            }}
             disabled={!availableGates.includes('SWITCH')}
             className={`p-2 rounded-lg transition-all duration-300 relative overflow-hidden ${
               !availableGates.includes('SWITCH')
@@ -2841,7 +2815,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
 
           {/* Output Button with Visual */}
           <button
-            onClick={() => availableGates.includes('OUTPUT') && setSelectedTool('OUTPUT')}
+            onClick={() => {
+              if (availableGates.includes('OUTPUT')) {
+                setSelectedTool('OUTPUT')
+                onToolSelect?.('OUTPUT')
+              }
+            }}
             disabled={!availableGates.includes('OUTPUT')}
             className={`p-2 rounded-lg transition-all duration-300 relative overflow-hidden ${
               !availableGates.includes('OUTPUT')
@@ -3010,7 +2989,12 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             return (
               <button
                 key={type}
-                onClick={() => isAvailable && setSelectedTool(gateType)}
+                onClick={() => {
+                  if (isAvailable) {
+                    setSelectedTool(gateType)
+                    onToolSelect?.(gateType)
+                  }
+                }}
                 disabled={!isAvailable}
                 className={`p-2 rounded-lg transition-all duration-300 relative overflow-hidden ${
                   !isAvailable
@@ -3056,15 +3040,52 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           <div className="flex-1" />
           
           {/* Objective Tracker (for puzzle mode) - Centered */}
-          {objective && (
-            <MiniByteObjective objective={objective} puzzleComplete={puzzleComplete} />
-          )}
           
           {/* Right spacer to push tools to the right */}
           <div className="flex-1" />
           
-          <button
-            onClick={() => setShowStateTable(!showStateTable)}
+          {/* Help, Hint, and Give Up buttons - Only in puzzle mode */}
+          {isPuzzleMode && (
+            <div className="flex items-center gap-4 mr-48">
+              {/* Help Button - Toggle Tutorial */}
+              <m.button
+                onClick={() => {/* TODO: Toggle tutorial visibility */}}
+                className="w-14 h-14 bg-purple-500/20 border-2 border-purple-400 rounded-full flex items-center justify-center hover:bg-purple-500/30 transition-all"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                title="Help"
+              >
+                <HelpCircle className="w-6 h-6 text-purple-300" />
+              </m.button>
+              
+              {/* Hint Button */}
+              <m.button
+                onClick={() => {/* TODO: Show hint */}}
+                className="w-14 h-14 bg-purple-500/20 border-2 border-purple-400 rounded-full flex items-center justify-center hover:bg-purple-500/30 transition-all"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                title="Hint"
+              >
+                <Lightbulb className="w-6 h-6 text-purple-300" />
+              </m.button>
+              
+              {/* Give Up Button - Come back later */}
+              <m.button
+                onClick={() => {/* TODO: Navigate back to course */}}
+                className="w-14 h-14 bg-purple-500/20 border-2 border-purple-400 rounded-full flex items-center justify-center hover:bg-purple-500/30 transition-all"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                title="Give up (come back later)"
+              >
+                <Flag className="w-6 h-6 text-purple-300" />
+              </m.button>
+            </div>
+          )}
+
+          {/* Add some left margin to Table button only in puzzle mode */}
+          <div className={isPuzzleMode ? "ml-8" : ""}>
+            <button
+              onClick={() => setShowStateTable(!showStateTable)}
             className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               showStateTable
                 ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/20'
@@ -3073,7 +3094,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           >
             <Table className="w-3.5 h-3.5" />
             <span className="font-semibold text-xs select-none hidden lg:inline">Table</span>
-          </button>
+            </button>
+          </div>
 
           {!isPuzzleMode && <button
             onClick={() => setShowEquation(!showEquation)}
@@ -3161,9 +3183,11 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           
           <div className="w-px h-6 bg-white/10 mx-1" />
           
-          <button
-            onClick={() => {
-              if (window.confirm('Clear the entire workspace?')) {
+          {/* Move Clear button left only in puzzle mode */}
+          <div className={isPuzzleMode ? "ml-8" : ""}>
+            <button
+              onClick={() => {
+                if (window.confirm('Clear the entire workspace?')) {
                 setGates([])
                 setConnections([])
                 setSelectedGate(null)
@@ -3181,6 +3205,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             <Trash className="w-3.5 h-3.5" />
             <span className="font-semibold text-xs select-none hidden lg:inline">Clear</span>
           </button>
+          </div>
           </div>
           
           {/* Right Section: Project Management */}
@@ -3430,6 +3455,24 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                   strokeWidth="20"
                   style={{ pointerEvents: 'stroke', cursor: 'default' }}
                 />
+                {/* Show intermediate value on wire if enabled */}
+                {isStepwiseMode && visualOptions.showIntermediateValues && visualOptions.showWireStates && (
+                  <foreignObject
+                    x={(from.x + to.x) / 2 - 15}
+                    y={(from.y + to.y) / 2 - 15}
+                    width="30"
+                    height="30"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    <div className={`w-full h-full flex items-center justify-center rounded-full ${
+                      isActive ? 'bg-green-500/20 border-2 border-green-400' : 'bg-red-500/20 border-2 border-red-400'
+                    }`}>
+                      <span className="text-white font-bold text-xs">
+                        {isActive ? '1' : '0'}
+                      </span>
+                    </div>
+                  </foreignObject>
+                )}
                 {hoveredConnection === conn.id && (
                   <foreignObject
                     x={(from.x + to.x) / 2 - 12}
@@ -3504,14 +3547,39 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
               onMouseLeave={() => setHoveredGate(null)}
             >
               <div className="relative w-full h-full">
+                {/* Show evaluation order number if enabled */}
+                {isStepwiseMode && visualOptions.showEvaluationOrder && evaluationOrder[gate.id] !== undefined && (
+                  <div 
+                    className="absolute z-20 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold"
+                    style={{
+                      top: -12 * zoom + 'px',
+                      left: -12 * zoom + 'px',
+                      width: 24 * zoom + 'px',
+                      height: 24 * zoom + 'px',
+                      fontSize: 12 * zoom + 'px'
+                    }}
+                  >
+                    {evaluationOrder[gate.id]}
+                  </div>
+                )}
+                
                 <div 
-                  className={`absolute inset-0 bg-gradient-to-br ${GATE_CONFIG[gate.type].color} backdrop-blur-sm ${GATE_CONFIG[gate.type].borderColor} transition-all duration-500`}
+                  className={`absolute inset-0 bg-gradient-to-br ${
+                    isStepwiseMode && undefinedGates.has(gate.id) 
+                      ? 'from-gray-700/50 to-gray-800/50' 
+                      : GATE_CONFIG[gate.type].color
+                  } backdrop-blur-sm ${
+                    isStepwiseMode && undefinedGates.has(gate.id)
+                      ? 'border-gray-600/50'
+                      : GATE_CONFIG[gate.type].borderColor
+                  } transition-all duration-500`}
                   style={{
                     borderRadius: 16 * zoom + 'px',
                     borderWidth: zoom + 'px',
-                    borderStyle: 'solid',
+                    borderStyle: isStepwiseMode && undefinedGates.has(gate.id) ? 'dashed' : 'solid',
+                    opacity: isStepwiseMode && undefinedGates.has(gate.id) ? 0.6 : 1,
                     boxShadow: gate.output ? `0 ${10*zoom}px ${25*zoom}px ${-5*zoom}px rgba(0,0,0,0.1), 0 ${4*zoom}px ${10*zoom}px ${-3*zoom}px rgba(0,0,0,0.07)` : `0 ${zoom}px ${3*zoom}px rgba(0,0,0,0.1)`,
-                    ...(animatingGates.has(gate.id) || gate.output ? {
+                    ...(animatingGates.has(gate.id) || (gate.output && !undefinedGates.has(gate.id)) ? {
                       boxShadow: `0 0 0 ${4*zoom}px rgba(34, 211, 238, 0.5), ${gate.output ? `0 ${10*zoom}px ${25*zoom}px ${-5*zoom}px rgba(0,0,0,0.1)` : `0 ${zoom}px ${3*zoom}px rgba(0,0,0,0.1)`}`
                     } : {})
                   }}>
@@ -3791,27 +3859,25 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           </div>
         )}
         
-        {/* Wiring Helper Text */}
+        {/* Invalid Connection Message */}
         <AnimatePresence>
-          {showWiringHelp && wiringHelpText && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <m.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="flex items-center gap-3"
+          {invalidConnectionMessage && (
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute top-[200px] left-1/2 -translate-x-1/2 pointer-events-none z-30"
+            >
+              <m.p
+                className="text-xl font-medium tracking-wide text-red-400"
+                style={{
+                  textShadow: '0 0 20px rgba(248, 113, 113, 0.8)'
+                }}
               >
-                <m.p
-                  className="text-xl font-medium text-white/90 tracking-wide"
-                  style={{
-                    textShadow: '0 0 20px rgba(192, 132, 252, 0.8)'
-                  }}
-                >
-                  {wiringHelpText}
-                </m.p>
-              </m.div>
-            </div>
+                {invalidConnectionMessage}
+              </m.p>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
@@ -4334,7 +4400,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
           }}
         >
           <div 
-            className="bg-cosmic-void/95 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl p-4 min-w-[300px]"
+            className="bg-cosmic-void/95 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl p-4 min-w-[380px] max-w-[500px]"
             onMouseDown={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               setIsDraggingStepwise(true)
@@ -4347,7 +4413,7 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             <div className="flex items-center justify-between mb-4 cursor-move">
               <h3 className="text-white font-semibold flex items-center gap-2 select-none">
                 <Gauge className="w-4 h-4" />
-                Stepwise Visualization
+                Enhanced Visualization
               </h3>
               <button
                 onClick={() => {
@@ -4358,6 +4424,8 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                   setCurrentStep(0)
                   setAnimatingGates(new Set())
                   setAnimatingConnections(new Set())
+                  setUndefinedGates(new Set())
+                  setCurrentOperation(null)
                   calculateOutputs()
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -4368,12 +4436,94 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
             </div>
             
             <div className="space-y-3" onMouseDown={(e) => e.stopPropagation()}>
-                  {/* Switch Selection */}
-                  <div className="pt-2 border-t border-white/10">
-                    <div className="space-y-2">
-                      <h4 className="text-white/60 text-xs font-semibold">Select Switch States:</h4>
-                      <div className="space-y-1">
-                        {gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id)).map((switchGate, index) => (
+              {/* Current Operation Info Panel */}
+              {currentOperation && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <div className="text-xs text-blue-300 font-medium mb-1">Current Operation</div>
+                  <div className="text-white font-mono text-sm">{currentOperation.operation}</div>
+                  <div className="text-xs text-white/60 mt-1">
+                    Gate: {currentOperation.gateType} • Step {currentStep}/{totalSteps}
+                  </div>
+                </div>
+              )}
+
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-white/60">Progress</span>
+                  <span className="text-xs text-white/80">{Math.round((currentStep / Math.max(totalSteps, 1)) * 100)}%</span>
+                </div>
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+                    style={{ width: `${(currentStep / Math.max(totalSteps, 1)) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Propagation Mode Selector */}
+              <div className="space-y-2">
+                <h4 className="text-white/60 text-xs font-semibold">Propagation Mode</h4>
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    onClick={() => setPropagationMode('sequential')}
+                    className={`px-2 py-1 text-xs rounded transition-all ${
+                      propagationMode === 'sequential'
+                        ? 'bg-blue-500/30 border border-blue-500/50 text-blue-300'
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    Sequential
+                  </button>
+                  <button
+                    onClick={() => setPropagationMode('wavefront')}
+                    className={`px-2 py-1 text-xs rounded transition-all ${
+                      propagationMode === 'wavefront'
+                        ? 'bg-blue-500/30 border border-blue-500/50 text-blue-300'
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    Wavefront
+                  </button>
+                  <button
+                    onClick={() => setPropagationMode('manual')}
+                    className={`px-2 py-1 text-xs rounded transition-all ${
+                      propagationMode === 'manual'
+                        ? 'bg-blue-500/30 border border-blue-500/50 text-blue-300'
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+
+              {/* Speed Control */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-white/60 text-xs font-semibold">Playback Speed</h4>
+                  <span className="text-xs text-white/80">{playbackSpeed}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="5"
+                  step="0.5"
+                  value={playbackSpeed}
+                  onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                  className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((playbackSpeed - 0.5) / 4.5) * 100}%, rgba(255,255,255,0.2) ${((playbackSpeed - 0.5) / 4.5) * 100}%, rgba(255,255,255,0.2) 100%)`
+                  }}
+                />
+              </div>
+
+              {/* Switch Selection */}
+              <div className="pt-2 border-t border-white/10">
+                <div className="space-y-2">
+                  <h4 className="text-white/60 text-xs font-semibold">Switch States</h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {gates.filter(g => g.type === 'SWITCH').sort((a, b) => a.id.localeCompare(b.id)).map((switchGate) => (
                           <div key={switchGate.id} className="flex items-center justify-between">
                             <span className="text-white/80 text-xs">
                               {switchGate.label || 'S'}
@@ -4415,169 +4565,218 @@ const LogicGateWorkspace = forwardRef<any, LogicGateWorkspaceProps>(({
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="pt-2 border-t border-white/10">
-                    <div className="flex items-center gap-2 justify-center">
-                      <button
-                        onClick={() => {
-                          if (isPlaying) {
-                            setIsPlaying(false)
-                          } else {
-                            // Initialize circuit with selected switch states
-                            initializeStepwise()
-                            setCurrentStep(0)
-                            setIsPlaying(true)
-                          }
-                        }}
-                        className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all flex items-center gap-2"
-                      >
-                        {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                        <span className="text-xs font-medium">{isPlaying ? 'Pause' : 'Auto'}</span>
-                      </button>
+                </div>
+              </div>
+
+              {/* Enhanced Playback Controls */}
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-2 justify-center">
+                  {/* Jump to Start */}
+                  <button
+                    onClick={() => {
+                      setCurrentStep(0)
+                      setIsPlaying(false)
+                      setAnimatingGates(new Set())
+                      setAnimatingConnections(new Set())
+                      initializeStepwise()
+                    }}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+                    title="Jump to Start"
+                  >
+                    <SkipForward className="w-3.5 h-3.5 rotate-180" style={{ transform: 'scaleX(-1)' }} />
+                  </button>
                       
-                      <button
-                        onClick={() => {
-                          if (!isPlaying && currentStep > 0) {
-                            calculateStepwise(true, 'backward')
-                          }
-                        }}
-                        disabled={isPlaying || currentStep === 0}
-                        className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                          isPlaying || currentStep === 0
-                            ? 'bg-white/5 text-white/30 cursor-not-allowed' 
-                            : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer'
-                        }`}
-                      >
-                        <SkipForward className="w-3.5 h-3.5 rotate-180" />
-                        <span className="text-xs font-medium">Back</span>
-                      </button>
+                  {/* Step Backward */}
+                  <button
+                    onClick={() => {
+                      if (!isPlaying && currentStep > 0) {
+                        calculateStepwise(true, 'backward')
+                      }
+                    }}
+                    disabled={isPlaying || currentStep === 0}
+                    className={`p-2 rounded-lg transition-all ${
+                      isPlaying || currentStep === 0
+                        ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                        : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer'
+                    }`}
+                    title="Step Backward"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                  </button>
+
+                  {/* Play/Pause */}
+                  <button
+                    onClick={() => {
+                      if (isPlaying) {
+                        setIsPlaying(false)
+                      } else {
+                        initializeStepwise()
+                        setCurrentStep(0)
+                        setIsPlaying(true)
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500/30 to-purple-500/30 hover:from-blue-500/40 hover:to-purple-500/40 text-white transition-all flex items-center gap-2"
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    <span className="text-xs font-medium">{isPlaying ? 'Pause' : 'Play'}</span>
+                  </button>
                       
-                      <button
-                        onClick={() => {
-                          if (!isPlaying) {
-                            // Manual step
-                            if (currentStep === 0) {
-                              initializeStepwise()
-                            }
-                            calculateStepwise(true)
-                          }
-                        }}
-                        disabled={isPlaying}
-                        className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                          isPlaying 
-                            ? 'bg-white/5 text-white/30 cursor-not-allowed' 
-                            : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer'
-                        }`}
-                      >
-                        <SkipForward className="w-3.5 h-3.5" />
-                        <span className="text-xs font-medium">Step</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setCurrentStep(0)
-                          setIsPlaying(false)
-                          setAnimatingGates(new Set())
-                          setAnimatingConnections(new Set())
+                  {/* Step Forward */}
+                  <button
+                    onClick={() => {
+                      if (!isPlaying) {
+                        if (currentStep === 0) {
                           initializeStepwise()
-                        }}
-                        className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all flex items-center gap-2"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span className="text-xs font-medium">Reset</span>
-                      </button>
-                    </div>
+                        }
+                        calculateStepwise(true)
+                      }
+                    }}
+                    disabled={isPlaying}
+                    className={`p-2 rounded-lg transition-all ${
+                      isPlaying 
+                        ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                        : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer'
+                    }`}
+                    title="Step Forward"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                      
+                  {/* Jump to End */}
+                  <button
+                    onClick={() => {
+                      // Jump to end by running all steps quickly
+                      while (propagationQueue.length > 0) {
+                        calculateStepwise(true)
+                      }
+                    }}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+                    title="Jump to End"
+                  >
+                    <SkipForward className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/10">
+                <h4 className="text-white/60 text-xs font-semibold mb-2">Visual Options</h4>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visualOptions.showIntermediateValues}
+                      onChange={(e) => setVisualOptions(prev => ({ ...prev, showIntermediateValues: e.target.checked }))}
+                      className="w-3 h-3 rounded border-white/30 bg-white/10 text-blue-500"
+                    />
+                    <span className="text-xs text-white/70">Show Intermediate Values</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visualOptions.showWireStates}
+                      onChange={(e) => setVisualOptions(prev => ({ ...prev, showWireStates: e.target.checked }))}
+                      className="w-3 h-3 rounded border-white/30 bg-white/10 text-blue-500"
+                    />
+                    <span className="text-xs text-white/70">Show Wire States</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visualOptions.showEvaluationOrder}
+                      onChange={(e) => setVisualOptions(prev => ({ ...prev, showEvaluationOrder: e.target.checked }))}
+                      className="w-3 h-3 rounded border-white/30 bg-white/10 text-blue-500"
+                    />
+                    <span className="text-xs text-white/70">Show Evaluation Order</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Status Message */}
+              <div className="text-center pt-2 border-t border-white/10">
+                {stepwiseMessage ? (
+                  <div className="text-amber-400 text-xs flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {stepwiseMessage}
                   </div>
-                  
-                  <div className="text-center">
-                    {stepwiseMessage ? (
-                      <div className="text-amber-400 text-xs flex items-center justify-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {stepwiseMessage}
-                      </div>
+                ) : (
+                  <div className={`text-white/60 text-xs ${isPlaying ? 'animate-pulse' : ''}`}>
+                    {propagationQueue.length === 0 && currentStep > 0 ? (
+                      <span className="text-emerald-400 font-medium">✓ Simulation Complete</span>
                     ) : (
-                      <div className={`text-white/60 text-xs ${isPlaying ? 'animate-pulse' : ''}`}>
-                        Step {currentStep}
-                        {propagationQueue.length === 0 && currentStep > 0 && (
-                          <span className="ml-2 text-emerald-400">✓ Complete</span>
-                        )}
-                      </div>
+                      <span>Ready to simulate circuit</span>
                     )}
                   </div>
+                )}
+              </div>
+            </div>
+      )}
+      {enableZoom && (
+        <div className="absolute top-28 right-4 z-20">
+          <div className="bg-cosmic-void/90 backdrop-blur-xl rounded-xl p-2 border border-white/10 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                const rect = workspaceRef.current!.getBoundingClientRect()
+                const centerX = rect.width / 2
+                const centerY = rect.height / 2
+                const newZoom = Math.min(MAX_ZOOM, zoom * 1.2)
+                
+                if (newZoom !== zoom) {
+                  const worldPos = screenToWorld(centerX, centerY)
+                  setZoom(newZoom)
+                  setPan({
+                    x: centerX - worldPos.x * newZoom,
+                    y: centerY - worldPos.y * newZoom
+                  })
+                }
+              }}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+              title="Zoom In"
+              disabled={zoom >= MAX_ZOOM}
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={() => {
+                const rect = workspaceRef.current!.getBoundingClientRect()
+                const centerX = rect.width / 2
+                const centerY = rect.height / 2
+                const newZoom = Math.max(MIN_ZOOM, zoom / 1.2)
+                
+                if (newZoom !== zoom) {
+                  const worldPos = screenToWorld(centerX, centerY)
+                  setZoom(newZoom)
+                  setPan({
+                    x: centerX - worldPos.x * newZoom,
+                    y: centerY - worldPos.y * newZoom
+                  })
+                }
+              }}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+              title="Zoom Out"
+              disabled={zoom <= MIN_ZOOM}
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+          
+            <button
+              onClick={() => {
+                setZoom(1)
+                setPan({ x: 0, y: 0 })
+              }}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+              title="Reset View"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+          
+            <div className="text-center text-xs text-white/40 font-mono">
+              {Math.round(zoom * 100)}%
             </div>
           </div>
         </div>
       )}
       
-      {/* Zoom Controls */}
-      {enableZoom && (
-        <div className="absolute top-28 right-4 z-20">
-          <div className="bg-cosmic-void/90 backdrop-blur-xl rounded-xl p-2 border border-white/10 flex flex-col gap-2">
-          <button
-            onClick={() => {
-              const rect = workspaceRef.current!.getBoundingClientRect()
-              const centerX = rect.width / 2
-              const centerY = rect.height / 2
-              const newZoom = Math.min(MAX_ZOOM, zoom * 1.2)
-              
-              if (newZoom !== zoom) {
-                const worldPos = screenToWorld(centerX, centerY)
-                setZoom(newZoom)
-                setPan({
-                  x: centerX - worldPos.x * newZoom,
-                  y: centerY - worldPos.y * newZoom
-                })
-              }
-            }}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-            title="Zoom In"
-            disabled={zoom >= MAX_ZOOM}
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={() => {
-              const rect = workspaceRef.current!.getBoundingClientRect()
-              const centerX = rect.width / 2
-              const centerY = rect.height / 2
-              const newZoom = Math.max(MIN_ZOOM, zoom / 1.2)
-              
-              if (newZoom !== zoom) {
-                const worldPos = screenToWorld(centerX, centerY)
-                setZoom(newZoom)
-                setPan({
-                  x: centerX - worldPos.x * newZoom,
-                  y: centerY - worldPos.y * newZoom
-                })
-              }
-            }}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-            title="Zoom Out"
-            disabled={zoom <= MIN_ZOOM}
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={() => {
-              setZoom(1)
-              setPan({ x: 0, y: 0 })
-            }}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-            title="Reset View"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          
-          <div className="text-center text-xs text-white/40 font-mono">
-            {Math.round(zoom * 100)}%
-          </div>
-        </div>
-      </div>
-      )}
-      
-      {/* Pan Instructions */}
       {(enableZoom || enablePan) && (
         <div className="absolute bottom-4 left-4 z-20">
           <div className="text-xs text-white/40 bg-cosmic-void/80 backdrop-blur-xl rounded-lg px-3 py-2 border border-white/5">

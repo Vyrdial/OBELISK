@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import CosmicBackground from '@/components/effects/CosmicBackground'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, Zap, CheckCircle, Binary, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, Zap, CheckCircle, Binary, ChevronRight, BookOpen } from 'lucide-react'
 import { m, AnimatePresence } from 'framer-motion'
 
 function WiringGatesContent() {
@@ -21,21 +21,14 @@ function WiringGatesContent() {
   const [showWiringHelp, setShowWiringHelp] = useState(false)
   const [wiringHelpText, setWiringHelpText] = useState('')
   const [lastConnectionCount, setLastConnectionCount] = useState(0)
+  const [hasSelectedComponent, setHasSelectedComponent] = useState(false)
 
   // Start the tutorial immediately
   useEffect(() => {
-    // Show tools after letting intro text display
-    setTimeout(() => {
-      setObjective("The tools are right here!")
-      setShowToolArrow(true)
-      
-      // After showing tools for longer, switch to main objective
-      setTimeout(() => {
-        setObjective("Place your components!")
-        setShowToolArrow(false)
-        setToolsIntroduced(true)
-      }, 4000)
-    }, 2500)
+    // Show tools immediately
+    setShowToolArrow(true)
+    setToolsIntroduced(true)
+    setObjective("Select a component")
   }, [])
   
   // Check circuit completion from workspace
@@ -50,44 +43,30 @@ function WiringGatesContent() {
       const totalComponents = switches.length + andGates.length + outputs.length
       
       if (totalComponents === 0) {
-        setObjective("Place your components!")
+        setObjective("Select a component")
       } else if (totalComponents === 4) {
         // All components placed
         if (connections.length === 0) {
           setObjective("Now wire them together!")
           setShowWiringHelp(true)
           setWiringHelpText('Click to start a wire')
+        } else if (connections.length > 0 && connections.length < 3) {
+          // Some wires placed but not all
+          if (connections.length > lastConnectionCount) {
+            // A new connection was made
+            setLastConnectionCount(connections.length)
+          }
+          setObjective("Place all the wires")
+          setShowWiringHelp(true)
+          // Text will be set by onConnectionStateChange
         } else if (connections.length > lastConnectionCount) {
           // A new connection was made
-          setWiringHelpText('Well done, keep going!')
           setLastConnectionCount(connections.length)
-          setTimeout(() => {
-            // Fade out the helper text after showing "Well done"
-            setShowWiringHelp(false)
-            setWiringHelpText('')
-          }, 1500)
+          // Keep showing the current objective
         }
       } else {
-        // Some components placed, figure out what's missing
-        const missing = []
-        if (switches.length < 2) {
-          missing.push(switches.length === 0 ? "2 switches" : "1 more switch")
-        }
-        if (andGates.length === 0) {
-          missing.push("an AND gate")
-        }
-        if (outputs.length === 0) {
-          missing.push("an output")
-        }
-        
-        // Create encouraging message based on what's placed and what's missing
-        if (totalComponents === 1) {
-          setObjective(`Good start! Add ${missing.join(", ")}`)
-        } else if (totalComponents === 2) {
-          setObjective(`Nice! Now add ${missing.join(" and ")}`)
-        } else if (totalComponents === 3) {
-          setObjective(`Almost there! Add ${missing[0]}`)
-        }
+        // Some components placed but not all
+        setObjective("Place all the components")
       }
     }
     
@@ -96,21 +75,21 @@ function WiringGatesContent() {
       const andGate = andGates[0]
       const output = outputs[0]
       
-      // Check connections from switches to AND gate
+      // Check connections between switches and AND gate (either direction)
       const switchToAnd = connections.filter(c => 
-        switches.some(s => s.id === c.from.gateId) &&
-        c.to.gateId === andGate.id
+        (switches.some(s => s.id === c.from.gateId) && c.to.gateId === andGate.id) ||
+        (switches.some(s => s.id === c.to.gateId) && c.from.gateId === andGate.id)
       )
       
-      // Check connection from AND to output
+      // Check connection between AND and output (either direction)
       const andToOutput = connections.filter(c =>
-        c.from.gateId === andGate.id &&
-        c.to.gateId === output.id
+        (c.from.gateId === andGate.id && c.to.gateId === output.id) ||
+        (c.from.gateId === output.id && c.to.gateId === andGate.id)
       )
       
       if (switchToAnd.length === 2 && andToOutput.length === 1 && !circuitWired) {
         setCircuitWired(true)
-        setObjective("Turn on both switches!")
+        setObjective("Power the switches")
         setShowWiringHelp(false)
       }
       
@@ -131,7 +110,7 @@ function WiringGatesContent() {
       <AnimatePresence>
         {showToolArrow && (
           <>
-            {/* Hollow box around tools */}
+            {/* Dynamic box around available tools only */}
             <m.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -140,20 +119,15 @@ function WiringGatesContent() {
               className="absolute top-[5.2rem] left-2 z-40 pointer-events-none"
             >
               <div className="relative">
-                {/* Glowing border box */}
+                {/* Glowing border box - tightly fits just the 3 available buttons */}
                 <m.div 
-                  className="absolute w-[520px] h-[102px] border-2 border-purple-400 rounded-xl"
+                  className="absolute w-[210px] h-[100px] border-2 border-white rounded-xl"
                   animate={{ opacity: [0.8, 1, 0.8] }}
                   transition={{ duration: 2, repeat: Infinity }}
                   style={{
-                    boxShadow: '0 0 20px rgba(192, 132, 252, 0.6), inset 0 0 20px rgba(192, 132, 252, 0.2)'
+                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.2)'
                   }}
                 />
-                {/* Corner accents */}
-                <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-white rounded-tl-lg" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-white rounded-tr-lg" />
-                <div className="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-white rounded-bl-lg" />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-white rounded-br-lg" />
               </div>
             </m.div>
             
@@ -170,10 +144,10 @@ function WiringGatesContent() {
                 y: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
                 scale: { type: "spring", stiffness: 260, damping: 20 }
               }}
-              className="absolute top-52 left-[260px] z-40 pointer-events-none"
+              className="absolute top-48 left-[105px] z-40 pointer-events-none"
             >
               {/* Simple white arrow with purple glow */}
-              <ArrowUp className="w-10 h-10 text-white drop-shadow-[0_0_15px_rgba(192,132,252,0.9)]" />
+              <ArrowUp className="w-10 h-10 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]" />
             </m.div>
           </>
         )}
@@ -181,56 +155,72 @@ function WiringGatesContent() {
       
       {/* Click Instruction Overlay */}
       <AnimatePresence>
-        {objective === "Place your components!" && (
+        {(objective === "Select a component" || objective === "Place all the components" || objective === "Place all the wires" || objective === "Power the switches" || showWiringHelp) && (
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ 
+              opacity: 0,
+              top: (objective === "Place all the components" || objective === "Place all the wires" || objective === "Power the switches" || showWiringHelp) ? "200px" : "50%"
+            }}
+            animate={{ 
+              opacity: 1,
+              top: (objective === "Place all the components" || objective === "Place all the wires" || objective === "Power the switches" || showWiringHelp) ? "200px" : "50%"
+            }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+            transition={{ 
+              opacity: { duration: 0.5 },
+              top: { duration: 1.2, ease: "easeInOut", delay: objective === "Place all the components" && !showWiringHelp ? 1.5 : 0 }
+            }}
+            className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            style={{ 
+              transform: (objective === "Place all the components" || objective === "Place all the wires" || objective === "Power the switches" || showWiringHelp)
+                ? "translateX(-50%)" 
+                : "translate(-50%, -50%)"
+            }}
           >
             <div className="flex flex-col items-center gap-4">
-              {/* Mouse icon with click animation */}
-              <m.div
-                animate={{ scale: [1, 0.9, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="relative"
-              >
-                <svg 
-                  width="60" 
-                  height="80" 
-                  viewBox="0 0 60 80" 
-                  className="drop-shadow-[0_0_20px_rgba(192,132,252,0.6)]"
+              {/* Mouse icon with click animation - only show for component selection states */}
+              {(objective === "Select a component" || (hasSelectedComponent && objective === "Select a component")) && !showWiringHelp && (
+                <m.div
+                  animate={{ scale: [1, 0.9, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="relative"
                 >
-                  {/* Mouse body */}
-                  <rect 
-                    x="10" 
-                    y="20" 
-                    width="40" 
-                    height="50" 
-                    rx="20" 
-                    fill="none" 
-                    stroke="white" 
-                    strokeWidth="3"
-                  />
-                  {/* Mouse wheel */}
-                  <rect 
-                    x="28" 
-                    y="30" 
-                    width="4" 
-                    height="10" 
-                    rx="2" 
-                    fill="white"
-                  />
-                  {/* Click indicator - left button pressed */}
-                  <m.path
-                    d="M 10 40 L 30 40 L 30 20 Q 10 20 10 40"
-                    fill="rgba(192, 132, 252, 0.8)"
-                    animate={{ opacity: [0, 1, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  />
-                </svg>
-              </m.div>
+                  <svg 
+                    width="60" 
+                    height="80" 
+                    viewBox="0 0 60 80" 
+                    className="drop-shadow-[0_0_20px_rgba(192,132,252,0.6)]"
+                  >
+                    {/* Mouse body */}
+                    <rect 
+                      x="10" 
+                      y="20" 
+                      width="40" 
+                      height="50" 
+                      rx="20" 
+                      fill="none" 
+                      stroke="white" 
+                      strokeWidth="3"
+                    />
+                    {/* Mouse wheel */}
+                    <rect 
+                      x="28" 
+                      y="30" 
+                      width="4" 
+                      height="10" 
+                      rx="2" 
+                      fill="white"
+                    />
+                    {/* Click indicator - left button pressed */}
+                    <m.path
+                      d="M 10 40 L 30 40 L 30 20 Q 10 20 10 40"
+                      fill="rgba(192, 132, 252, 0.8)"
+                      animate={{ opacity: [0, 1, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                  </svg>
+                </m.div>
+              )}
               
               {/* Text instruction */}
               <m.p
@@ -241,7 +231,7 @@ function WiringGatesContent() {
                   textShadow: '0 0 20px rgba(192, 132, 252, 0.8)'
                 }}
               >
-                Click anywhere to place
+                {showWiringHelp ? wiringHelpText : (objective === "Power the switches" ? "Power the switches" : (objective === "Place all the wires" ? "Place all the wires" : (objective === "Place all the components" ? "Place all the components" : (hasSelectedComponent ? "Click anywhere to place" : "Select a component"))))}
               </m.p>
             </div>
           </m.div>
@@ -272,7 +262,7 @@ function WiringGatesContent() {
                   }
                 }}
                 disabled={isNavigating}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500/80 to-indigo-500/80 text-white font-semibold rounded-xl hover:from-purple-600/80 hover:to-indigo-600/80 transition-all duration-500 ease-out shadow-lg hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 backdrop-blur-sm"
+                className="px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-all duration-300 shadow-lg hover:shadow-green-500/30 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 Next Puzzle
                 <ChevronRight className="w-5 h-5" />
@@ -297,9 +287,17 @@ function WiringGatesContent() {
           showWiringHelp={showWiringHelp}
           wiringHelpText={wiringHelpText}
           onConnectionStateChange={(isConnecting) => {
-            if (showWiringHelp && isConnecting) {
-              setWiringHelpText('Click to end the wire')
+            if (showWiringHelp) {
+              if (isConnecting) {
+                setWiringHelpText('Click to end the wire')
+              } else {
+                setWiringHelpText('Click to start a wire')
+              }
             }
+          }}
+          onToolSelect={() => {
+            setHasSelectedComponent(true)
+            setShowToolArrow(false)
           }}
         />
       </div>
